@@ -25,6 +25,11 @@ export default function Sidebar() {
   const router = useRouter();
   const { isRecalculating, pulseCountdown, autoSyncEnabled } = useLivePulse();
 
+  // Hide sidebar on public landing page and login page for full-width layout
+  if (pathname === '/' || pathname === '/login') {
+    return null;
+  }
+
 
   const navItems = [
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -69,18 +74,18 @@ export default function Sidebar() {
         </Link>
 
         {/* Quick Action Button in Sidebar */}
-        <div className="mt-4 px-1">
+        <div className="mt-5 px-1">
           <Link
             href="/research/new"
-            className="w-full py-2.5 px-3.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-purple-600/20 transition active:scale-95"
+            className="w-full py-3 px-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-purple-600/20 transition active:scale-95"
           >
-            <Sparkles className="w-3.5 h-3.5" />
+            <Sparkles className="w-4 h-4" />
             <span>New Research Run</span>
           </Link>
         </div>
 
         {/* Navigation Links */}
-        <nav className="mt-6 space-y-1">
+        <nav className="mt-6 space-y-1.5">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
@@ -88,7 +93,7 @@ export default function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
                   isActive
                     ? 'bg-purple-50 text-purple-700 font-bold border border-purple-200/80 shadow-sm'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
@@ -105,14 +110,14 @@ export default function Sidebar() {
       {/* Footer / Account / Engine Status */}
       <div className="pt-4 border-t border-slate-200/80 space-y-3">
         {/* Engine Status Badge with Live Pulse */}
-        <div className="p-3 rounded-2xl bg-purple-50/70 border border-purple-200 text-xs space-y-1.5 shadow-xs">
+        <div className="p-3.5 rounded-2xl bg-purple-50/70 border border-purple-200 text-xs space-y-2 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-slate-700 font-semibold text-[11px] flex items-center gap-1.5">
-              <Zap className={`w-3.5 h-3.5 ${isRecalculating ? 'text-amber-500 animate-spin' : 'text-purple-600'}`} />
+            <span className="text-slate-700 font-semibold text-xs flex items-center gap-1.5">
+              <Zap className={`w-4 h-4 ${isRecalculating ? 'text-amber-500 animate-spin' : 'text-purple-600'}`} />
               <span>SEBT-NEXT Live</span>
             </span>
             <span
-              className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full transition ${
+              className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full transition ${
                 isRecalculating
                   ? 'bg-amber-100 text-amber-800 animate-pulse border border-amber-300'
                   : autoSyncEnabled
@@ -128,7 +133,7 @@ export default function Sidebar() {
               {isRecalculating ? 'Calculating...' : autoSyncEnabled ? `${pulseCountdown}s` : 'Paused'}
             </span>
           </div>
-          <div className="flex items-center justify-between text-[10px] text-slate-500">
+          <div className="flex items-center justify-between text-xs text-slate-500">
             <span>Background Drift: Active</span>
             <span className="font-mono text-purple-700 font-bold">15-Phases</span>
           </div>
@@ -136,19 +141,19 @@ export default function Sidebar() {
 
         {/* User profile & Logout */}
         <div className="flex items-center justify-between px-2 pt-1">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-full bg-purple-600 text-white font-bold text-xs flex items-center justify-center shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-purple-600 text-white font-bold text-xs flex items-center justify-center shadow-sm">
               U
             </div>
             <div className="text-left">
-              <p className="text-xs font-bold text-slate-800 leading-tight">Pro Member</p>
-              <p className="text-[10px] text-slate-400">Tier 1 Pro Access</p>
+              <p className="text-sm font-bold text-slate-800 leading-tight">Pro Member</p>
+              <p className="text-xs text-slate-400">Tier 1 Pro Access</p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            title="Log out"
-            className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition"
+            title="Sign Out"
+            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition"
           >
             <LogOut className="w-4 h-4" />
           </button>

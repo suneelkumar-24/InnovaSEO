@@ -24,11 +24,13 @@ import {
 } from 'lucide-react';
 import { NAVIGATION_MODULES, PrimaryModule, SubNavItem } from '@/lib/navigationConfig';
 import { useLivePulse } from './LivePulseProvider';
+import { useAuth } from './AuthProvider';
 
 export default function DualSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { isRecalculating, pulseCountdown, autoSyncEnabled } = useLivePulse();
+  const { user, isAdmin, logout } = useAuth();
 
   // Active primary module state (Default to main suite 'niche-hunter')
   const [activeModuleId, setActiveModuleId] = useState<string>('niche-hunter');
@@ -69,24 +71,21 @@ export default function DualSidebar() {
   }, [activeModuleId]);
 
   const handleLogout = async () => {
-    try {
-      await fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'logout' }),
-      });
-      router.push('/login');
-      router.refresh();
-    } catch (e) {
-      router.push('/login');
-    }
+    await logout();
   };
 
-  // Filter items in sub-sidebar if search query is typed
+  // Filter items in sub-sidebar if search query is typed and hide admin-center if not admin
   const filteredSections = useMemo(() => {
-    if (!searchQuery.trim()) return activeModule.sections;
+    let sections = activeModule.sections;
+    if (!isAdmin) {
+      sections = sections.map((sec) => ({
+        ...sec,
+        items: sec.items.filter((item) => item.id !== 'admin-center'),
+      }));
+    }
+    if (!searchQuery.trim()) return sections;
     const q = searchQuery.toLowerCase();
-    return activeModule.sections
+    return sections
       .map((sec) => ({
         ...sec,
         items: sec.items.filter(
@@ -96,7 +95,7 @@ export default function DualSidebar() {
         ),
       }))
       .filter((sec) => sec.items.length > 0);
-  }, [activeModule, searchQuery]);
+  }, [activeModule, searchQuery, isAdmin]);
 
   // Hide completely on landing page or login page (called after all hooks to comply with React rules)
   if (pathname === '/' || pathname === '/login') {
@@ -375,12 +374,31 @@ export default function DualSidebar() {
             </div>
           </div>
 
-          {/* Sub-Sidebar Footer Info Card */}
-          <div className="p-3 border-t border-slate-100 bg-slate-50/50">
-            <div className="p-2.5 rounded-xl bg-purple-50/70 border border-purple-100 text-xs flex items-center justify-between">
+          {/* Sub-Sidebar Footer: User Card & Engine Info */}
+          <div className="p-3 border-t border-slate-100 bg-slate-50/50 space-y-2">
+            {user && (
+              <div className="p-2 rounded-xl bg-white border border-slate-200 text-xs flex items-center justify-between shadow-2xs">
+                <div className="min-w-0 pr-1.5">
+                  <p className="text-[11px] font-bold text-slate-900 truncate">
+                    {user.name}
+                  </p>
+                  <p className="text-[10px] text-slate-500 truncate">{user.email}</p>
+                </div>
+                <span
+                  className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase shrink-0 ${
+                    isAdmin
+                      ? 'bg-purple-100 text-purple-700'
+                      : 'bg-emerald-100 text-emerald-700'
+                  }`}
+                >
+                  {isAdmin ? 'Admin' : 'Free Pro'}
+                </span>
+              </div>
+            )}
+            <div className="p-2 rounded-xl bg-purple-50/70 border border-purple-100 text-xs flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-bold text-purple-900">SEBT-NEXT Engine</p>
-                <p className="text-[10px] text-purple-700">12-Point Checklist Active</p>
+                <p className="text-[10px] text-purple-700">100% Free Early Access</p>
               </div>
               <span className="px-2 py-0.5 rounded-full bg-purple-600 text-white text-[10px] font-bold">
                 v2.0

@@ -434,6 +434,7 @@ function initializeDatabase(): DatabaseSchema {
   const salt = bcrypt.genSaltSync(10);
   const defaultAdminPasswordHash = bcrypt.hashSync('Admin@123456', salt);
   const defaultUserPasswordHash = bcrypt.hashSync('User@123456', salt);
+  const today = new Date().toISOString().slice(0, 10);
 
   const initialDb: DatabaseSchema = {
     users: [
@@ -445,8 +446,9 @@ function initializeDatabase(): DatabaseSchema {
         passwordHash: defaultAdminPasswordHash,
         createdAt: new Date().toISOString(),
         apiUsageCount: 42,
-        credits: 9999,
-        dailyCreditsLimit: 9999,
+        credits: 999999,
+        dailyCreditsLimit: 999999,
+        lastCreditResetDate: today,
       },
       {
         id: 'usr_demo_02',
@@ -458,6 +460,7 @@ function initializeDatabase(): DatabaseSchema {
         apiUsageCount: 18,
         credits: 50,
         dailyCreditsLimit: 50,
+        lastCreditResetDate: today,
       },
     ],
     researches: [
@@ -525,7 +528,7 @@ function initializeDatabase(): DatabaseSchema {
         id: 'log_init_01',
         level: 'info',
         module: 'System',
-        message: 'Niche Hunter SEBT-NEXT Engine initialized successfully with seeded validation records.',
+        message: 'Niche Hunter system initialized with Admin management.',
         timestamp: new Date().toISOString(),
       },
     ],
@@ -723,22 +726,45 @@ export const db = {
   // Users
   getUserByEmail: (email: string) => {
     const data = readDb();
-    return data.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    const user = data.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    if (!user) return null;
+    // Check and reset daily credits (50 credits every 24h)
+    const today = new Date().toISOString().slice(0, 10);
+    if (user.role !== 'admin' && user.lastCreditResetDate !== today) {
+      user.lastCreditResetDate = today;
+      user.credits = user.dailyCreditsLimit ?? 50;
+      writeDb(data);
+    }
+    return user;
   },
   getUserById: (id: string) => {
     const data = readDb();
     const user = data.users.find((u) => u.id === id);
     if (!user) return null;
+    // Check and reset daily credits (50 credits every 24h)
+    const today = new Date().toISOString().slice(0, 10);
+    if (user.role !== 'admin' && user.lastCreditResetDate !== today) {
+      user.lastCreditResetDate = today;
+      user.credits = user.dailyCreditsLimit ?? 50;
+      writeDb(data);
+    }
     const { passwordHash, ...safeUser } = user;
     return safeUser;
   },
-  createUser: (email: string, password: string, name: string, role: 'admin' | 'user' = 'user') => {
+  createUser: (
+    email: string,
+    password: string,
+    name: string,
+    role: 'admin' | 'user' = 'user',
+    dailyCreditsLimit: number = 50
+  ) => {
     const data = readDb();
     if (data.users.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
       throw new Error('User with this email already exists.');
     }
     const salt = bcrypt.genSaltSync(10);
     const passwordHash = bcrypt.hashSync(password, salt);
+    const today = new Date().toISOString().slice(0, 10);
     const newUser = {
       id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       email,
@@ -747,8 +773,9 @@ export const db = {
       passwordHash,
       createdAt: new Date().toISOString(),
       apiUsageCount: 0,
-      credits: role === 'admin' ? 9999 : 50,
-      dailyCreditsLimit: role === 'admin' ? 9999 : 50,
+      credits: role === 'admin' ? 999999 : dailyCreditsLimit,
+      dailyCreditsLimit: role === 'admin' ? 999999 : dailyCreditsLimit,
+      lastCreditResetDate: today,
     };
     data.users.push(newUser);
     writeDb(data);
@@ -762,8 +789,59 @@ export const db = {
   deleteUser: (userId: string) => {
     const data = readDb();
     data.users = data.users.filter((u) => u.id !== userId);
+    // Also clean up that user's researches and saved items
+    data.researches = data.researches.filter((r) => r.userId !== userId);
+    data.savedNiches = data.savedNiches.filter((s) => s.userId !== userId);
     writeDb(data);
     return true;
+  },
+  deductUserCredit: (
+    userId: string,
+    amount: number = 1
+  ): { success: boolean; remainingCredits: number; error?: string } => {
+    const data = readDb();
+    const user = data.users.find((u) => u.id === userId);
+    if (!user) {
+      return { success: false, remainingCredits: 0, error: 'User account not found.' };
+    }
+    // Admins have unlimited credits
+    if (user.role === 'admin') {
+      user.apiUsageCount = (user.apiUsageCount || 0) + 1;
+      writeDb(data);
+      return { success: true, remainingCredits: 999999 };
+    }
+    // Auto-reset daily quota if new day
+    const today = new Date().toISOString().slice(0, 10);
+    if (user.lastCreditResetDate !== today) {
+      user.lastCreditResetDate = today;
+      user.credits = user.dailyCreditsLimit ?? 50;
+    }
+    if ((user.credits ?? 0) < amount) {
+      writeDb(data);
+      return {
+        success: false,
+        remainingCredits: user.credits ?? 0,
+        error: `Daily credit limit reached (0/${user.dailyCreditsLimit ?? 50} credits remaining). Your 50 credits reset daily.`,
+      };
+    }
+    user.credits = (user.credits ?? 50) - amount;
+    user.apiUsageCount = (user.apiUsageCount || 0) + 1;
+    writeDb(data);
+    return { success: true, remainingCredits: user.credits };
+  },
+  updateUserCredits: (userId: string, newCredits: number, newDailyLimit?: number) => {
+    const data = readDb();
+    const user = data.users.find((u) => u.id === userId);
+    if (!user) {
+      throw new Error('User not found.');
+    }
+    user.credits = newCredits;
+    if (typeof newDailyLimit === 'number') {
+      user.dailyCreditsLimit = newDailyLimit;
+    }
+    writeDb(data);
+    const { passwordHash: _, ...safeUser } = user;
+    return safeUser;
   },
   updateUserPassword: (userId: string, newPassword: string) => {
     const data = readDb();
@@ -803,13 +881,11 @@ export const db = {
     }
   },
 
-  // Researches & Search History
+  // Researches & Search History (Strict per-user data isolation)
   getResearches: (userId?: string) => {
+    if (!userId) return [];
     const data = readDb();
-    let list = data.researches;
-    if (userId) {
-      list = list.filter((r) => r.userId === userId);
-    }
+    const list = data.researches.filter((r) => r.userId === userId);
     return list
       .map((r) => {
         if (!r.deductions && r.report) {

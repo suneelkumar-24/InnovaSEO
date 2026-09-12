@@ -41,46 +41,37 @@ const FLOATING_BUBBLES = [
 
 export default function HomePage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
   const [seedKeyword, setSeedKeyword] = useState('');
   const [showPricingModal, setShowPricingModal] = useState(false);
   const [activeShowcaseTab, setActiveShowcaseTab] = useState<'direct' | 'marketplace' | 'checklist'>('checklist');
 
-  useEffect(() => {
-    if (!loading) {
-      if (user) {
-        router.replace('/dashboard');
-      } else {
-        router.replace('/login');
-      }
-    }
-  }, [user, loading, router]);
-
   const handleQuickHunt = (e: React.FormEvent) => {
     e.preventDefault();
     if (!seedKeyword.trim()) return;
-    router.push(`/research/new?seed=${encodeURIComponent(seedKeyword.trim())}`);
+    const clean = seedKeyword.trim();
+    if (user) {
+      router.push(`/research/new?seed=${encodeURIComponent(clean)}`);
+    } else {
+      router.push(`/login?redirect=${encodeURIComponent(`/research/new?seed=${clean}`)}`);
+    }
   };
 
   const handleSelectBubble = (kw: string) => {
     setSeedKeyword(kw);
-    router.push(`/research/new?seed=${encodeURIComponent(kw)}`);
+    if (user) {
+      router.push(`/research/new?seed=${encodeURIComponent(kw)}`);
+    } else {
+      router.push(`/login?redirect=${encodeURIComponent(`/research/new?seed=${kw}`)}`);
+    }
   };
-
-  if (loading || !user) {
-    return (
-      <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center font-sans text-xs text-slate-500">
-        Redirecting to login portal...
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#faf9f6] text-slate-800 font-sans relative overflow-x-hidden selection:bg-purple-500 selection:text-white">
       {/* 1. TOP NOTIFICATION BAR */}
       <div className="bg-[#18181b] text-slate-300 text-xs py-2 px-4 text-center font-medium flex items-center justify-center gap-2 border-b border-slate-800">
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-        <span>🚀 100% Free Early Access Beta — All features unlocked with zero charges.</span>
+        <span>🚀 100% Free Early Access Beta — 50 Credits (75 Mins Daily Usage) with zero charges.</span>
         <button
           onClick={() => setShowPricingModal(true)}
           className="text-purple-400 hover:text-purple-300 font-bold underline ml-1"
@@ -89,7 +80,7 @@ export default function HomePage() {
         </button>
       </div>
 
-      {/* 2. NAVIGATION BAR (Matching Screenshot with Purple Branding) */}
+      {/* 2. NAVIGATION BAR */}
       <header className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between sticky top-0 bg-[#faf9f6]/90 backdrop-blur-md z-30">
         <div className="flex items-center gap-8">
           {/* Stylized Monogram Logo */}
@@ -126,18 +117,34 @@ export default function HomePage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <Link
-            href="/login"
-            className="text-xs font-bold text-slate-700 hover:text-purple-600 px-3 py-2 transition hidden sm:inline-block"
-          >
-            Log in
-          </Link>
-          <Link
-            href="/research/new"
-            className="px-5 py-2.5 rounded-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-lg shadow-purple-600/30 transition transform hover:-translate-y-0.5"
-          >
-            Start free →
-          </Link>
+          {user ? (
+            <div className="flex items-center gap-3">
+              <span className="hidden sm:inline text-xs font-semibold text-slate-700">
+                Hi, <strong className="text-purple-700">{user.name}</strong>
+              </span>
+              <Link
+                href="/dashboard"
+                className="px-5 py-2.5 rounded-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-lg shadow-purple-600/30 transition transform hover:-translate-y-0.5"
+              >
+                Go to Dashboard →
+              </Link>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <Link
+                href="/login"
+                className="text-xs font-bold text-slate-700 hover:text-purple-600 px-3 py-2 transition hidden sm:inline-block"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/login?tab=register"
+                className="px-5 py-2.5 rounded-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-lg shadow-purple-600/30 transition transform hover:-translate-y-0.5"
+              >
+                Request Access →
+              </Link>
+            </div>
+          )}
         </div>
       </header>
 
@@ -336,7 +343,7 @@ export default function HomePage() {
 
               <div className="pt-2">
                 <Link
-                  href="/research/new"
+                  href={user ? "/research/new" : "/login?redirect=/research/new"}
                   className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-white text-purple-900 font-bold text-xs shadow-xl hover:bg-purple-50 transition transform hover:-translate-y-0.5"
                 >
                   <Target className="w-4 h-4 text-purple-600" />

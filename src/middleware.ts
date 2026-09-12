@@ -2,18 +2,48 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const TOKEN_NAME = 'nh_session_token';
+const JWT_SECRET = process.env.JWT_SECRET || 'niche-hunter-super-secret-jwt-key-2026';
 
-// Helper to validate JWT structure and expiration without external dependencies
-function isTokenValid(token: string | undefined): boolean {
+// Cryptographically verify JWT HMAC-SHA256 signature using Web Crypto API (native in Next.js Edge Runtime)
+async function verifyJwtInEdge(token: string | undefined): Promise<boolean> {
   if (!token || typeof token !== 'string') return false;
   const parts = token.split('.');
   if (parts.length !== 3) return false;
 
+  const [headerB64, payloadB64, signatureB64] = parts;
+
   try {
-    const base64Url = parts[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      enc.encode(JWT_SECRET),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify']
+    );
+
+    const signatureStr = signatureB64.replace(/-/g, '+').replace(/_/g, '/');
+    const binarySignature = atob(signatureStr);
+    const signatureBytes = new Uint8Array(binarySignature.length);
+    for (let i = 0; i < binarySignature.length; i++) {
+      signatureBytes[i] = binarySignature.charCodeAt(i);
+    }
+
+    const dataBytes = enc.encode(`${headerB64}.${payloadB64}`);
+
+    const isValidSig = await crypto.subtle.verify(
+      'HMAC',
+      key,
+      signatureBytes,
+      dataBytes
+    );
+
+    if (!isValidSig) return false;
+
+    // Decode and parse payload
+    const payloadStr = payloadB64.replace(/-/g, '+').replace(/_/g, '/');
     const jsonPayload = decodeURIComponent(
-      atob(base64)
+      atob(payloadStr)
         .split('')
         .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
         .join('')
@@ -22,7 +52,7 @@ function isTokenValid(token: string | undefined): boolean {
 
     if (!payload || !payload.userId) return false;
 
-    // Check expiration if exp claim is present
+    // Check expiration
     if (payload.exp && typeof payload.exp === 'number') {
       const currentTimestamp = Math.floor(Date.now() / 1000);
       if (payload.exp < currentTimestamp) {
@@ -36,7 +66,7 @@ function isTokenValid(token: string | undefined): boolean {
   }
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 1. Static asset paths bypass
@@ -58,14 +88,14 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  const validToken = isTokenValid(token);
+  const validToken = await verifyJwtInEdge(token);
 
   // 2. Auth API routes: Allow /api/auth through unconditionally
   if (pathname === '/api/auth' || pathname.startsWith('/api/auth/')) {
     return NextResponse.next();
   }
 
-  // 3. Any other API route (/api/*) requires authentication
+  // 3. Any other API route (/api/*) requires valid authentication
   if (pathname.startsWith('/api/')) {
     if (!validToken) {
       const response = NextResponse.json(
@@ -83,7 +113,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 4. Handle Login Page
+  // 4. Handle Login Page (PUBLIC)
   if (pathname === '/login') {
     // If user already has a valid token and did not explicitly request account switch, send to dashboard
     if (validToken && !request.nextUrl.searchParams.has('switch')) {
@@ -92,23 +122,24 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 5. If user is NOT authenticated on any page (including / or any protected route):
+  // 5. Handle Root Page (/)
+  if (pathname === '/' || pathname === '') {
+    if (validToken) {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  // 6. Protected routes (like /dashboard, /research, /saved, etc.):
+  // If user is NOT authenticated, redirect to /login immediately
   if (!validToken) {
     const loginUrl = new URL('/login', request.url);
-    // Only add redirect parameter if user was attempting to visit a specific sub-route
-    if (pathname !== '/' && pathname !== '') {
-      loginUrl.searchParams.set('redirect', pathname);
-    }
+    loginUrl.searchParams.set('redirect', pathname);
     const response = NextResponse.redirect(loginUrl);
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    response.headers.set('Cache-Control', 'no-store, max-age=0');
     response.cookies.delete(TOKEN_NAME);
     response.cookies.set(TOKEN_NAME, '', { path: '/', maxAge: 0 });
     return response;
-  }
-
-  // 6. If user IS authenticated and visits the root / homepage, automatically take them to their workspace
-  if (pathname === '/' || pathname === '') {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   return NextResponse.next();

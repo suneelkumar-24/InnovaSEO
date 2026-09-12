@@ -21,7 +21,8 @@ function AuthForm() {
   const redirectTarget = searchParams.get('redirect') || '/dashboard';
 
   const { login } = useAuth();
-  const [tab, setTab] = useState<'login' | 'register'>('login');
+  const initialTab = searchParams.get('tab') === 'register' ? 'register' : 'login';
+  const [tab, setTab] = useState<'login' | 'register'>(initialTab);
 
   // Login form state
   const [email, setEmail] = useState('');

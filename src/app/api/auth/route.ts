@@ -148,6 +148,8 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     let token = '';
@@ -161,28 +163,46 @@ export async function GET(req: NextRequest) {
     }
 
     if (!token) {
-      return NextResponse.json({ success: false, user: null });
+      const response = NextResponse.json({ success: false, user: null }, { status: 401 });
+      response.headers.set('Cache-Control', 'no-store, max-age=0');
+      return response;
     }
 
     const payload = verifyJwt(token);
     if (!payload || !payload.userId) {
-      return NextResponse.json({ success: false, user: null });
+      const response = NextResponse.json({ success: false, user: null }, { status: 401 });
+      response.headers.set('Cache-Control', 'no-store, max-age=0');
+      response.cookies.delete(TOKEN_NAME);
+      response.cookies.set(TOKEN_NAME, '', { path: '/', maxAge: 0 });
+      return response;
     }
 
     const user = db.getUserById(payload.userId);
     if (!user) {
-      return NextResponse.json({ success: false, user: null });
+      const response = NextResponse.json({ success: false, user: null }, { status: 401 });
+      response.headers.set('Cache-Control', 'no-store, max-age=0');
+      response.cookies.delete(TOKEN_NAME);
+      response.cookies.set(TOKEN_NAME, '', { path: '/', maxAge: 0 });
+      return response;
     }
 
     if (user.status === 'pending_approval' || user.status === 'suspended') {
-      return NextResponse.json({ success: false, user: null, status: user.status });
+      const response = NextResponse.json({ success: false, user: null, status: user.status }, { status: 403 });
+      response.headers.set('Cache-Control', 'no-store, max-age=0');
+      response.cookies.delete(TOKEN_NAME);
+      response.cookies.set(TOKEN_NAME, '', { path: '/', maxAge: 0 });
+      return response;
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       user,
     });
+    response.headers.set('Cache-Control', 'no-store, max-age=0');
+    return response;
   } catch (error: any) {
-    return NextResponse.json({ success: false, user: null });
+    const response = NextResponse.json({ success: false, user: null }, { status: 401 });
+    response.headers.set('Cache-Control', 'no-store, max-age=0');
+    return response;
   }
 }

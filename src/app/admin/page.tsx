@@ -244,6 +244,23 @@ export default function AdminPage() {
     }
   };
 
+  const handleQuickCreditTopup = async (userId: string, credits: number) => {
+    try {
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update_credits', userId, credits, dailyLimit: 50 }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActionNotice(`Credits reset/updated to ${credits} for this user.`);
+        fetchAdminData();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const copyCredentialsText = () => {
     if (!credentialsModal) return;
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://nichehunter.io';
@@ -686,6 +703,18 @@ Welcome aboard! Please keep your login credentials secure.`;
                       </select>
                     </div>
 
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Account Status</label>
+                      <select
+                        value={newUserStatus}
+                        onChange={(e: any) => setNewUserStatus(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      >
+                        <option value="active">Active (Immediate Workspace Access)</option>
+                        <option value="suspended">Suspended (Access Temporarily Blocked)</option>
+                      </select>
+                    </div>
+
                     <div className="p-3 rounded-2xl bg-purple-50/70 border border-purple-100 text-[11px] text-purple-900 leading-relaxed">
                       💡 Upon creation, you will get a 1-click button to copy pre-formatted credentials ready to send to the user via WhatsApp or Email.
                     </div>
@@ -843,6 +872,97 @@ Welcome aboard! Please keep your login credentials secure.`;
                         className="px-5 py-2 rounded-full bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition shadow-md disabled:opacity-50"
                       >
                         {resettingPassword ? 'Updating...' : 'Update Password'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* Modal 4: Edit User Details & Status */}
+            {editModalUser && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+                <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 border border-slate-200">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <Pencil className="w-5 h-5 text-indigo-600" />
+                      <h4 className="text-base font-serif font-bold text-slate-900">Edit User Details</h4>
+                    </div>
+                    <button
+                      onClick={() => setEditModalUser(null)}
+                      className="text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {editUserError && (
+                    <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
+                      {editUserError}
+                    </div>
+                  )}
+
+                  <form onSubmit={handleUpdateUser} className="space-y-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Full Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={editUserName}
+                        onChange={(e) => setEditUserName(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Email Address</label>
+                      <input
+                        type="email"
+                        required
+                        value={editUserEmail}
+                        onChange={(e) => setEditUserEmail(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Role Permission</label>
+                      <select
+                        value={editUserRole}
+                        onChange={(e: any) => setEditUserRole(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      >
+                        <option value="user">Standard User (100% Free Pro Early Access)</option>
+                        <option value="admin">Administrator (Full Access & User Control)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Account Status</label>
+                      <select
+                        value={editUserStatus}
+                        onChange={(e: any) => setEditUserStatus(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      >
+                        <option value="active">Active (Access Allowed)</option>
+                        <option value="suspended">Suspended (Access Blocked)</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => setEditModalUser(null)}
+                        className="px-4 py-2 rounded-full border border-slate-300 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={updatingUser}
+                        className="px-5 py-2 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-md disabled:opacity-50"
+                      >
+                        {updatingUser ? 'Saving...' : 'Save Changes'}
                       </button>
                     </div>
                   </form>

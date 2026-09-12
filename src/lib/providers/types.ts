@@ -563,6 +563,7 @@ export interface User {
   credits: number;
   dailyCreditsLimit: number;
   lastCreditResetDate?: string;
+  status?: 'active' | 'suspended';
 }
 
 export interface SavedNicheItem {

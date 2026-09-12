@@ -5,18 +5,12 @@
       "email": "admin@nichehunter.io",
       "name": "Alex Hunter (Admin)",
       "role": "admin",
+      "status": "active",
       "passwordHash": "$2b$10$PmD3.JDXlbT9u2fzd6JfMOlDvIT.R9sgJF5UewB0Cnn9i2D1VIRkC",
       "createdAt": "2026-09-06T08:46:49.662Z",
-      "apiUsageCount": 43
-    },
-    {
-      "id": "usr_demo_02",
-      "email": "user@nichehunter.io",
-      "name": "Sarah Connor",
-      "role": "user",
-      "passwordHash": "$2b$10$PmD3.JDXlbT9u2fzd6JfMOiPNmsDwLrGF8CQ2b/N.9iUM9qXnizbq",
-      "createdAt": "2026-09-06T08:46:49.662Z",
-      "apiUsageCount": 30
+      "apiUsageCount": 43,
+      "credits": 999999,
+      "dailyCreditsLimit": 999999
     }
   ],
   "researches": [

@@ -17,6 +17,14 @@
 
 ---
 
+## 1.2 Mandatory Auto-Push Rule (Always Push)
+- **CRITICAL & ABSOLUTE**:
+  - **Always immediately commit and push all verified changes to remote (`origin/main`)**.
+  - Never leave working code uncommitted or unpushed after a task is completed.
+  - As soon as `npx tsc --noEmit` passes, execute `git add -A; git commit -m "..."; git push origin main`.
+
+---
+
 ## 2. Project Overview & Mission
 - **Project Name**: Niche Hunter
 - **Core Goal**: Full-cycle AI-driven micro-niche & nano-niche discovery, SERP competition vulnerability analysis, 12-point checklist verification, monetization blueprints, and programmatic asset planning.

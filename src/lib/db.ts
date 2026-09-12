@@ -909,23 +909,36 @@ export const db = {
     verdict?: string;
     limit?: number;
   }) => {
-    const data = readDb();
-    let all = data.researches.map((r) => {
-      if (!r.deductions && r.report) {
-        r.deductions = generateDeductionsFromReport(r.report, r.searchOrigin || 'manual');
-      }
-      if (!r.searchOrigin) {
-        r.searchOrigin = r.id.includes('_ap_') ? 'auto_hunter' : 'manual';
-      }
-      if (!r.executedBy) {
-        r.executedBy = r.searchOrigin === 'auto_hunter' ? 'Auto Hunter Radar Agent' : 'User (Manual Hunt)';
-      }
-      return r;
-    });
-
-    if (options?.userId) {
-      all = all.filter((r) => r.userId === options.userId);
+    if (!options?.userId) {
+      return {
+        history: [],
+        stats: {
+          totalSearches: 0,
+          manualCount: 0,
+          autoHunterCount: 0,
+          marketplaceCount: 0,
+          anomalyCount: 0,
+          strongOpportunityCount: 0,
+          averageScore: 0,
+        },
+      };
     }
+
+    const data = readDb();
+    let all = data.researches
+      .filter((r) => r.userId === options.userId)
+      .map((r) => {
+        if (!r.deductions && r.report) {
+          r.deductions = generateDeductionsFromReport(r.report, r.searchOrigin || 'manual');
+        }
+        if (!r.searchOrigin) {
+          r.searchOrigin = r.id.includes('_ap_') ? 'auto_hunter' : 'manual';
+        }
+        if (!r.executedBy) {
+          r.executedBy = r.searchOrigin === 'auto_hunter' ? 'Auto Hunter Radar Agent' : 'User (Manual Hunt)';
+        }
+        return r;
+      });
 
     const totalSearches = all.length;
     const manualCount = all.filter((r) => r.searchOrigin === 'manual').length;
@@ -1059,13 +1072,13 @@ export const db = {
     return true;
   },
 
-  // Saved Niches
+  // Saved Niches (Strict per-user isolation)
   getSavedNiches: (userId?: string) => {
+    if (!userId) return [];
     const data = readDb();
-    if (userId) {
-      return data.savedNiches.filter((s) => s.userId === userId).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    }
-    return data.savedNiches.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return data.savedNiches
+      .filter((s) => s.userId === userId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
   saveNiche: (item: SavedNicheItem) => {
     const data = readDb();

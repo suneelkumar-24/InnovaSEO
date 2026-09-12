@@ -57,15 +57,15 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#faf9f6] text-slate-800 font-sans relative overflow-x-hidden selection:bg-purple-500 selection:text-white">
-      {/* 1. TOP NOTIFICATION BAR (Matching Screenshot) */}
+      {/* 1. TOP NOTIFICATION BAR */}
       <div className="bg-[#18181b] text-slate-300 text-xs py-2 px-4 text-center font-medium flex items-center justify-center gap-2 border-b border-slate-800">
-        <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-        <span>Flexible plans for every stage — start free.</span>
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+        <span>🚀 100% Free Early Access Beta — All features unlocked with zero charges.</span>
         <button
           onClick={() => setShowPricingModal(true)}
           className="text-purple-400 hover:text-purple-300 font-bold underline ml-1"
         >
-          See pricing →
+          Early Access Details →
         </button>
       </div>
 
@@ -98,9 +98,9 @@ export default function HomePage() {
             </Link>
             <button
               onClick={() => setShowPricingModal(true)}
-              className="px-2.5 py-1 rounded-lg border border-dashed border-purple-500/60 text-purple-600 font-bold hover:bg-purple-50 transition"
+              className="px-2.5 py-1 rounded-lg border border-dashed border-emerald-500/60 text-emerald-700 font-bold hover:bg-emerald-50 transition"
             >
-              Deals
+              100% Free Beta
             </button>
           </nav>
         </div>
@@ -651,10 +651,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 8. MODAL FOR PRO 1-YEAR DEAL (Screenshot 1 Style in Purple) */}
+      {/* 8. MODAL FOR 100% FREE EARLY ACCESS STATUS */}
       {showPricingModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center space-y-5 relative animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center space-y-5 relative animate-in fade-in zoom-in-95 duration-200">
             <button
               onClick={() => setShowPricingModal(false)}
               className="absolute top-4 right-4 p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100"
@@ -662,32 +662,37 @@ export default function HomePage() {
               <X className="w-4 h-4" />
             </button>
 
-            <span className="inline-block px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-[10px] font-extrabold uppercase tracking-wider">
-              BEST VALUE
+            <span className="inline-block px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wider">
+              100% FREE EARLY ACCESS
             </span>
 
             <div>
               <h3 className="text-xl font-serif font-bold text-slate-900">
-                Pro · 1-Year — Best Value
+                All Pro Features Unlocked ($0)
               </h3>
               <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                A full year of Niche Hunter Pro at a locked-in price, with unlimited 15-phase research dossiers, 12-point checklist exports, and Flippa reverse-engineering.
+                Niche Hunter is currently in private early access. Zero subscription fees, zero charges, and no credit card required. All 12-point checklists, live SERP vulnerability audits, and blueprints are completely unlocked.
               </p>
             </div>
 
-            <div className="bg-purple-50 p-4 rounded-2xl border border-purple-100">
-              <span className="text-3xl font-black text-purple-700">$99.99</span>
-              <span className="text-xs text-slate-500 block mt-0.5">per year · ≈ $7.50 / mo</span>
+            <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 text-left space-y-2 text-xs text-emerald-950">
+              <p className="font-bold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Zero charges · No credit card required</span>
+              </p>
+              <p className="text-[11px] text-emerald-800 leading-relaxed">
+                Accounts are provisioned directly by the workspace administrator with email and password. Contact your administrator to receive your login credentials.
+              </p>
             </div>
 
             <button
               onClick={() => {
                 setShowPricingModal(false);
-                router.push('/research/new');
+                router.push('/login');
               }}
               className="w-full py-3.5 rounded-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-lg shadow-purple-600/30 transition"
             >
-              Claim Pro Deal →
+              Go to Workspace Login →
             </button>
           </div>
         </div>

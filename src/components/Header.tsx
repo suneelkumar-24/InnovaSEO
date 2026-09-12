@@ -166,22 +166,22 @@ export default function Header({
       )}
 
       {/* Main Header Title & Breadcrumbs Row */}
-      <div className="h-14 px-6 flex items-center justify-between">
-        <div className="flex flex-col justify-center">
+      <div className="min-h-[3.5rem] py-2 px-6 flex items-center justify-between gap-4">
+        <div className="flex flex-col justify-center min-w-0 shrink">
           {/* SEMrush-style Breadcrumbs */}
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium truncate">
             {computedBreadcrumbs.map((crumb, idx) => (
               <React.Fragment key={idx}>
-                {idx > 0 && <ChevronRight className="w-3 h-3 text-slate-300" />}
+                {idx > 0 && <ChevronRight className="w-3 h-3 text-slate-300 shrink-0" />}
                 {crumb.href ? (
                   <Link
                     href={crumb.href}
-                    className="hover:text-purple-600 transition"
+                    className="hover:text-purple-600 transition truncate"
                   >
                     {crumb.label}
                   </Link>
                 ) : (
-                  <span className="text-slate-600 font-semibold">{crumb.label}</span>
+                  <span className="text-slate-600 font-semibold truncate">{crumb.label}</span>
                 )}
               </React.Fragment>
             ))}
@@ -189,12 +189,12 @@ export default function Header({
 
           {/* Page Title & Subtitle */}
           {title && (
-            <div className="flex items-center gap-2 mt-0.5">
-              <h1 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+            <div className="flex items-center gap-2 mt-0.5 min-w-0">
+              <h1 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight shrink-0">
                 {title}
               </h1>
               {subtitle && (
-                <span className="text-xs text-slate-400 hidden sm:inline">
+                <span className="text-xs text-slate-400 hidden xl:inline truncate max-w-md 2xl:max-w-xl">
                   • {subtitle}
                 </span>
               )}
@@ -203,7 +203,7 @@ export default function Header({
         </div>
 
         {/* Action Buttons Slot */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 shrink-0">
           {children}
 
           {/* User Credits & Time Badge */}

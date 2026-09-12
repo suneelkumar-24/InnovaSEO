@@ -66,17 +66,28 @@ export default function ResearchWorkspacePage() {
       setLoading(false);
       return;
     }
+    console.log(`%c[DOSSIER 📂]%c Fetching 15-phase dossier data for ID: ${id}...`, 'color: #7c3aed; font-weight: bold;', 'color: #5b21b6;');
     try {
       const res = await fetch(`/api/research/${id}`);
-      if (!res.ok) return;
+      if (!res.ok) {
+        console.error(`%c[DOSSIER ❌]%c Dossier fetch returned HTTP ${res.status}`, 'color: #ef4444; font-weight: bold;', 'color: #b91c1c;');
+        return;
+      }
       const contentType = res.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) return;
       const data = await res.json();
       if (data.success && data.research?.report) {
         setReport(data.research.report);
+        console.log(
+          `%c[DOSSIER ✅]%c Loaded "${data.research.report.nicheName}" (Score: ${data.research.report.overallViabilityScore}, Verdict: ${data.research.report.verdict})`,
+          'color: #10b981; font-weight: bold;',
+          'color: #047857;'
+        );
+      } else {
+        console.warn('[DOSSIER ⚠️] Dossier returned empty or without report:', data);
       }
     } catch (e) {
-      console.error(e);
+      console.error('[DOSSIER ❌] Error fetching dossier:', e);
     } finally {
       setLoading(false);
     }
@@ -87,18 +98,23 @@ export default function ResearchWorkspacePage() {
   }, [id]);
 
   const handleRefresh = async () => {
+    console.log(`%c[DOSSIER 🔄 REFRESH]%c Recalculating 15-phase report for ID: ${id}...`, 'color: #7c3aed; font-weight: bold;', 'color: #5b21b6;');
     setRefreshing(true);
     try {
       const res = await fetch(`/api/research/${id}`, { method: 'POST' });
-      if (!res.ok) return;
+      if (!res.ok) {
+        console.error(`%c[DOSSIER ❌]%c Refresh failed with HTTP ${res.status}`, 'color: #ef4444; font-weight: bold;', 'color: #b91c1c;');
+        return;
+      }
       const contentType = res.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) return;
       const data = await res.json();
       if (data.success && data.research?.report) {
         setReport(data.research.report);
+        console.log(`%c[DOSSIER 🔄 REFRESH ✅]%c Report updated successfully!`, 'color: #10b981; font-weight: bold;', 'color: #047857;');
       }
     } catch (e) {
-      console.error(e);
+      console.error('[DOSSIER ❌] Refresh error:', e);
     } finally {
       setRefreshing(false);
     }

@@ -64,21 +64,29 @@ export default function AutopilotRadarPage() {
   const fetchAutopilotStatus = async (signal?: AbortSignal) => {
     if (isFetchingRef.current) return;
     isFetchingRef.current = true;
+    console.log('%c[AUTOPILOT 📡]%c Syncing radar status...', 'color: #8b5cf6; font-weight: bold;', 'color: #6d28d9;');
     try {
       const res = await fetch('/api/autopilot', {
         signal: signal || abortControllerRef.current?.signal,
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        console.warn(`%c[AUTOPILOT ⚠️]%c Status fetch returned HTTP ${res.status}`, 'color: #f59e0b; font-weight: bold;', 'color: #b45309;');
+        return;
+      }
       const contentType = res.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) return;
       const data = await res.json();
       if (data.success) {
         setStatus(data);
+        console.log(
+          `%c[AUTOPILOT ✅]%c Radar status synced: ${data.recentDiscoveries?.length || 0} discoveries displayed, Active: ${data.active}`,
+          'color: #10b981; font-weight: bold;',
+          'color: #047857;'
+        );
       }
     } catch (e: any) {
       if (e?.name === 'AbortError') return;
-      // Gracefully handle transient network failure without triggering Next.js dev overlay
-      console.warn('Autopilot status sync warning (offline or server retrying):', e?.message || e);
+      console.warn('[AUTOPILOT ⚠️] Status sync warning (offline or server retrying):', e?.message || e);
     } finally {
       isFetchingRef.current = false;
       setLoading(false);
@@ -104,6 +112,7 @@ export default function AutopilotRadarPage() {
   }, []);
 
   const handleToggleAutopilot = async () => {
+    console.log('%c[AUTOPILOT 🔄 TOGGLE]%c Toggling background autonomous daemon...', 'color: #ec4899; font-weight: bold;', 'color: #be185d;');
     try {
       const res = await fetch('/api/autopilot', {
         method: 'POST',
@@ -115,14 +124,21 @@ export default function AutopilotRadarPage() {
       if (!contentType.includes('application/json')) return;
       const data = await res.json();
       if (data.success) {
+        console.log('%c[AUTOPILOT 🔄 TOGGLE ✅]%c New daemon status:', 'color: #10b981; font-weight: bold;', 'color: #047857;', data.config?.enabled ? 'Active' : 'Paused');
         fetchAutopilotStatus();
       }
     } catch (e: any) {
-      console.warn('Toggle autopilot failed:', e?.message || e);
+      console.warn('[AUTOPILOT ❌] Toggle autopilot failed:', e?.message || e);
     }
   };
 
   const handleTriggerRunNow = async (opts: { forceAi?: boolean; batchSize?: number } = {}) => {
+    const batchSize = opts.batchSize || selectedBatchSize;
+    console.log(
+      `%c[AUTOPILOT ⚡ RUN BATCH]%c Scouting ${batchSize} micro-niches (AI Mode: ${Boolean(opts.forceAi)}, Sector: ${filterSector})...`,
+      'background: #8b5cf6; color: #fff; font-weight: bold; padding: 2px 4px; border-radius: 3px;',
+      'color: #6d28d9; font-weight: bold;'
+    );
     setRunningBatch(true);
     setBatchProgress(10);
 
@@ -136,12 +152,15 @@ export default function AutopilotRadarPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'run_now',
-          batchSize: opts.batchSize || selectedBatchSize,
+          batchSize,
           sector: filterSector !== 'all' ? filterSector : undefined,
           forceAiDiscovery: Boolean(opts.forceAi),
         }),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        console.error(`%c[AUTOPILOT ❌]%c Batch run returned HTTP ${res.status}`, 'color: #ef4444; font-weight: bold;', 'color: #b91c1c;');
+        return;
+      }
       const contentType = res.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) return;
       
@@ -149,13 +168,19 @@ export default function AutopilotRadarPage() {
       setBatchProgress(100);
       const data = await res.json();
       if (data.success) {
+        console.log(
+          `%c[AUTOPILOT ⚡ COMPLETED ✅]%c Discovered ${data.discoveredItems?.length || 0} items! Summary: ${data.summary}`,
+          'background: #10b981; color: #fff; font-weight: bold; padding: 2px 4px; border-radius: 3px;',
+          'color: #047857;'
+        );
         fetchAutopilotStatus();
       } else {
+        console.warn('[AUTOPILOT ⚠️] Batch returned error:', data.error);
         alert(data.error || 'Autopilot run failed');
       }
     } catch (e: any) {
       clearInterval(progInterval);
-      console.warn('Autopilot run failed:', e?.message || e);
+      console.error('[AUTOPILOT ❌] Autopilot run threw exception:', e?.message || e);
       alert(e?.message || 'Error running autopilot batch');
     } finally {
       setTimeout(() => {
@@ -197,53 +222,44 @@ export default function AutopilotRadarPage() {
     <div className="flex-1 flex flex-col bg-[#faf9f6] min-h-screen">
       <Header
         title="Autonomous Autopilot Radar"
-        subtitle="Self-operating micro-niche hunting engine scouting Tier 1 markets for DR 0-15 anomalies without human input"
+        subtitle="Self-operating micro-niche hunting engine scouting Tier 1 markets for DR 0-15 anomalies"
         breadcrumbs={[
           { label: 'Home', href: '/dashboard' },
           { label: 'AI Autopilot Radar', href: '/autopilot' },
         ]}
       >
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex items-center gap-2 shrink-0">
           {/* Autopilot Status Badge & Toggle */}
           <button
             onClick={handleToggleAutopilot}
-            className={`px-3.5 py-1.5 rounded-full border text-xs font-bold flex items-center gap-2 transition shadow-xs ${
+            className={`px-3 py-1.5 rounded-full border text-xs font-bold flex items-center gap-2 transition shadow-xs ${
               status?.active
                 ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
                 : 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200'
             }`}
+            title={status?.active ? 'Click to pause autopilot' : 'Click to activate autopilot'}
           >
             <span
               className={`w-2 h-2 rounded-full ${
-                status?.active ? 'bg-emerald-500 animate-ping' : 'bg-slate-400'
+                status?.active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
               }`}
             />
             <span>{status?.active ? 'Autopilot Active' : 'Autopilot Paused'}</span>
           </button>
 
-          {/* AI Novelty Brainstorm Button */}
-          <button
-            onClick={() => handleTriggerRunNow({ forceAi: true, batchSize: 5 })}
-            disabled={runningBatch}
-            className="px-4 py-2 rounded-full bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-indigo-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition active:scale-95 disabled:opacity-50"
-            title="Dynamically invent 5 brand new, non-repetitive micro-niches across unexpected industries using AI"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-            <span>✨ AI Brainstorm 5 Novel Niches</span>
-          </button>
-
-          {/* Trigger Autonomous Run Now Button */}
+          {/* Compact Trigger Run Button */}
           <button
             onClick={() => handleTriggerRunNow()}
             disabled={runningBatch}
-            className="px-4 py-2 rounded-full bg-slate-900 hover:bg-black text-white font-bold text-xs flex items-center gap-2 shadow-md transition active:scale-95 disabled:opacity-50"
+            className="px-3.5 py-1.5 rounded-full bg-slate-900 hover:bg-black text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition active:scale-95 disabled:opacity-50 shrink-0"
+            title="Hunt next batch of micro-niches"
           >
             {runningBatch ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
             ) : (
               <Zap className="w-3.5 h-3.5 text-amber-400" />
             )}
-            <span>{runningBatch ? `Scouting (${batchProgress}%)...` : '⚡ Hunt Next Batch'}</span>
+            <span>{runningBatch ? `${batchProgress}%` : 'Hunt Batch'}</span>
           </button>
         </div>
       </Header>
@@ -561,8 +577,15 @@ export default function AutopilotRadarPage() {
                     </span>
 
                     <button
-                      onClick={() => router.push(`/research/${item.researchId}`)}
-                      className="px-4 py-2 rounded-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-600/20 transition group-hover:scale-105"
+                      onClick={() => {
+                        console.log(
+                          `%c[DOSSIER 📂]%c Opening full 15-phase dossier for ID: ${item.researchId} ("${item.nicheName}")`,
+                          'color: #7c3aed; font-weight: bold;',
+                          'color: #5b21b6;'
+                        );
+                        router.push(`/research/${item.researchId}`);
+                      }}
+                      className="px-4 py-2 rounded-full bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-600/20 transition group-hover:scale-105 cursor-pointer"
                     >
                       <span>Open Full 15-Phase Dossier</span>
                       <ChevronRight className="w-3.5 h-3.5" />

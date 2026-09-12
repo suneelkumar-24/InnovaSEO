@@ -765,6 +765,35 @@ export const db = {
     writeDb(data);
     return true;
   },
+  updateUserPassword: (userId: string, newPassword: string) => {
+    const data = readDb();
+    const user = data.users.find((u) => u.id === userId);
+    if (!user) {
+      throw new Error('User not found.');
+    }
+    const salt = bcrypt.genSaltSync(10);
+    user.passwordHash = bcrypt.hashSync(newPassword, salt);
+    writeDb(data);
+    return true;
+  },
+  updateUser: (userId: string, updates: { name?: string; role?: 'admin' | 'user'; email?: string }) => {
+    const data = readDb();
+    const user = data.users.find((u) => u.id === userId);
+    if (!user) {
+      throw new Error('User not found.');
+    }
+    if (updates.email && updates.email.toLowerCase() !== user.email.toLowerCase()) {
+      if (data.users.some((u) => u.id !== userId && u.email.toLowerCase() === updates.email!.toLowerCase())) {
+        throw new Error('Another user with this email already exists.');
+      }
+      user.email = updates.email;
+    }
+    if (updates.name) user.name = updates.name;
+    if (updates.role) user.role = updates.role;
+    writeDb(data);
+    const { passwordHash: _, ...safeUser } = user;
+    return safeUser;
+  },
   incrementApiUsage: (userId: string) => {
     const data = readDb();
     const user = data.users.find((u) => u.id === userId);

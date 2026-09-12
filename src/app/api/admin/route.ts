@@ -77,6 +77,45 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, user: newUser });
     }
 
+    if (action === 'reset_password') {
+      const { userId, newPassword } = body;
+      if (!userId || !newPassword) {
+        return NextResponse.json(
+          { success: false, error: 'User ID and new password are required.' },
+          { status: 400 }
+        );
+      }
+      if (newPassword.length < 6) {
+        return NextResponse.json(
+          { success: false, error: 'Password must be at least 6 characters.' },
+          { status: 400 }
+        );
+      }
+      db.updateUserPassword(userId, newPassword);
+      db.addLog({
+        userId: user?.id,
+        level: 'warn',
+        module: 'Admin',
+        message: `Admin reset password for user ID: ${userId}`,
+      });
+      return NextResponse.json({ success: true, message: 'Password updated successfully.' });
+    }
+
+    if (action === 'update_user') {
+      const { userId, name, email, role } = body;
+      if (!userId) {
+        return NextResponse.json({ success: false, error: 'User ID is required.' }, { status: 400 });
+      }
+      const updatedUser = db.updateUser(userId, { name, email, role });
+      db.addLog({
+        userId: user?.id,
+        level: 'info',
+        module: 'Admin',
+        message: `Admin updated user details for: ${updatedUser.email}`,
+      });
+      return NextResponse.json({ success: true, user: updatedUser });
+    }
+
     if (action === 'delete_user') {
       const { userId } = body;
       if (!userId) {

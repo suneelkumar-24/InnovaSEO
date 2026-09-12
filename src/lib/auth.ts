@@ -58,4 +58,15 @@ export async function getUserFromRequest(req: NextRequest): Promise<User | null>
   }
 }
 
+export async function requireAdmin(req: NextRequest): Promise<{ authorized: boolean; user: User | null; error?: string }> {
+  const user = await getUserFromRequest(req);
+  if (!user) {
+    return { authorized: false, user: null, error: 'Unauthorized: Please log in.' };
+  }
+  if (user.role !== 'admin') {
+    return { authorized: false, user, error: 'Forbidden: Admin privilege required.' };
+  }
+  return { authorized: true, user };
+}
+
 export { TOKEN_NAME };

@@ -6,8 +6,12 @@ import { NicheType, BusinessModel } from '@/lib/providers/types';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const user = await getUserFromRequest(req);
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized. Please sign in.' }, { status: 401 });
+    }
     const { id } = await params;
-    const research = db.getResearchById(id);
+    const research = db.getResearchById(id, user.id);
     if (!research) {
       return NextResponse.json({ success: false, error: 'Research not found.' }, { status: 404 });
     }
@@ -20,8 +24,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(req);
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized. Please sign in.' }, { status: 401 });
+    }
     const { id } = await params;
-    db.deleteResearch(id, user?.id);
+    db.deleteResearch(id, user.id);
     return NextResponse.json({ success: true, message: 'Research deleted.' });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -31,8 +38,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(req);
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized. Please sign in.' }, { status: 401 });
+    }
     const { id } = await params;
-    const research = db.getResearchById(id);
+    const research = db.getResearchById(id, user.id);
 
     if (!research) {
       return NextResponse.json({ success: false, error: 'Research not found.' }, { status: 404 });

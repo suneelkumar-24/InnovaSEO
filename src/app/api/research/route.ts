@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized. Please sign in.' }, { status: 401 });
     }
-    const researches = user.role === 'admin' ? db.getResearches() : db.getResearches(user.id);
+    const researches = db.getResearches(user.id);
     return NextResponse.json({ success: true, researches });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

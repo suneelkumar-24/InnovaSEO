@@ -975,11 +975,13 @@ export const db = {
     };
   },
 
-  getResearchById: (id: string) => {
+  getResearchById: (id: string, userId?: string) => {
     const data = readDb();
     if (!id) return null;
+    const isOwner = (r: ResearchRecord) => !userId || r.userId === userId;
+
     // 1. Exact match
-    const exact = data.researches.find((r) => r.id === id);
+    const exact = data.researches.find((r) => r.id === id && isOwner(r));
     if (exact) {
       if (!exact.deductions && exact.report) {
         exact.deductions = generateDeductionsFromReport(exact.report, exact.searchOrigin || 'manual');
@@ -988,9 +990,11 @@ export const db = {
     }
 
     // 2. Saved niche researchId match
-    const savedMatch = data.savedNiches.find((s) => s.id === id || s.researchId === id);
+    const savedMatch = data.savedNiches.find(
+      (s) => (s.id === id || s.researchId === id) && (!userId || s.userId === userId)
+    );
     if (savedMatch) {
-      const fromSaved = data.researches.find((r) => r.id === savedMatch.researchId);
+      const fromSaved = data.researches.find((r) => r.id === savedMatch.researchId && isOwner(r));
       if (fromSaved) {
         if (!fromSaved.deductions && fromSaved.report) {
           fromSaved.deductions = generateDeductionsFromReport(fromSaved.report, fromSaved.searchOrigin || 'manual');
@@ -1002,7 +1006,9 @@ export const db = {
     // 3. Suffix / partial match
     const suffix = id.includes('_') ? id.split('_').pop() : id;
     if (suffix && suffix.length >= 4) {
-      const partial = data.researches.find((r) => r.id.endsWith(`_${suffix}`) || r.id.includes(suffix));
+      const partial = data.researches.find(
+        (r) => (r.id.endsWith(`_${suffix}`) || r.id.includes(suffix)) && isOwner(r)
+      );
       if (partial) {
         if (!partial.deductions && partial.report) {
           partial.deductions = generateDeductionsFromReport(partial.report, partial.searchOrigin || 'manual');

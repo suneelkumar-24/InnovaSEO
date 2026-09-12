@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized. Please sign in.' }, { status: 401 });
     }
-    const userId = user.role === 'admin' ? undefined : user.id;
+    const userId = user.id;
 
     const { searchParams } = new URL(req.url);
     const origin = (searchParams.get('origin') as SearchOrigin | 'all') || 'all';
@@ -42,7 +42,7 @@ export async function DELETE(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized. Please sign in.' }, { status: 401 });
     }
-    const userId = user.role === 'admin' ? undefined : user.id;
+    const userId = user.id;
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');

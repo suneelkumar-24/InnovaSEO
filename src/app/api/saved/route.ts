@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized. Please log in.' }, { status: 401 });
     }
-    const saved = user.role === 'admin' ? db.getSavedNiches() : db.getSavedNiches(user.id);
+    const saved = db.getSavedNiches(user.id);
     return NextResponse.json({ success: true, saved });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -61,6 +61,9 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const user = await getUserFromRequest(req);
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized. Please log in.' }, { status: 401 });
+    }
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
 
@@ -68,7 +71,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'ID is required' }, { status: 400 });
     }
 
-    db.deleteSavedNiche(id, user?.id);
+    db.deleteSavedNiche(id, user.id);
     return NextResponse.json({ success: true, message: 'Saved niche deleted' });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

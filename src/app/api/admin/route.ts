@@ -13,30 +13,21 @@ export async function GET(req: NextRequest) {
     }
 
     const users = db.getAllUsers();
-    const logs = db.getLogs(100);
-    const researches = db.getResearches();
-    const savedNiches = db.getSavedNiches();
-    const settings = db.getSettings();
-
-    const strongOppsCount = researches.filter((r) => r.viabilityScore >= 80).length;
-    const avgScore =
-      researches.length > 0
-        ? Math.round(researches.reduce((acc, r) => acc + (r.viabilityScore || 0), 0) / researches.length)
-        : 0;
+    const activeUsers = users.filter((u) => u.status !== 'suspended').length;
+    const suspendedUsers = users.filter((u) => u.status === 'suspended').length;
+    const adminUsers = users.filter((u) => u.role === 'admin').length;
+    const standardUsers = users.filter((u) => u.role === 'user').length;
 
     return NextResponse.json({
       success: true,
       stats: {
         totalUsers: users.length,
-        totalResearches: researches.length,
-        totalSavedNiches: savedNiches.length,
-        strongOpportunities: strongOppsCount,
-        averageViabilityScore: avgScore,
+        activeUsers,
+        suspendedUsers,
+        adminUsers,
+        standardUsers,
       },
       users,
-      logs,
-      researches: researches.slice(0, 50),
-      avoidList: settings.avoidList,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -94,9 +85,35 @@ export async function POST(req: NextRequest) {
         userId: currentAdmin.id,
         level: 'info',
         module: 'Admin',
-        message: `Admin (${currentAdmin.email}) added new user account: ${newUser.email} (${newUser.role}, Quota: ${newUser.dailyCreditsLimit} credits/day)`,
+        message: `Admin (${currentAdmin.email}) added new user account: ${newUser.email} (${newUser.role})`,
       });
       return NextResponse.json({ success: true, user: newUser });
+    }
+
+    if (action === 'toggle_status') {
+      const { userId } = body;
+      if (!userId) {
+        return NextResponse.json({ success: false, error: 'User ID is required.' }, { status: 400 });
+      }
+      if (userId === currentAdmin.id) {
+        return NextResponse.json(
+          { success: false, error: 'You cannot suspend your own account.' },
+          { status: 400 }
+        );
+      }
+      const existing = db.getUserById(userId);
+      if (!existing) {
+        return NextResponse.json({ success: false, error: 'User not found.' }, { status: 404 });
+      }
+      const newStatus = existing.status === 'suspended' ? 'active' : 'suspended';
+      const updatedUser = db.updateUser(userId, { status: newStatus });
+      db.addLog({
+        userId: currentAdmin.id,
+        level: 'info',
+        module: 'Admin',
+        message: `Admin (${currentAdmin.email}) toggled status of ${updatedUser.email} to ${newStatus}.`,
+      });
+      return NextResponse.json({ success: true, user: updatedUser });
     }
 
     if (action === 'update_credits') {

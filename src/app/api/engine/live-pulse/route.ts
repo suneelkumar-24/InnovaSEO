@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { LivePulseEngine } from '@/lib/engine/live-pulse-engine';
 import { db } from '@/lib/db';
+import { getUserFromRequest } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   try {
+    const user = await getUserFromRequest(req);
     const status = LivePulseEngine.getStatus();
-    const savedNiches = db.getSavedNiches();
+    const savedNiches = user ? db.getSavedNiches(user.id) : [];
     return NextResponse.json({
       success: true,
       status,
@@ -21,12 +23,13 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getUserFromRequest(req);
     const body = await req.json().catch(() => ({}));
     const { targetId } = body;
 
     if (targetId) {
       const result = LivePulseEngine.recalculateSingle(targetId);
-      const savedNiches = db.getSavedNiches();
+      const savedNiches = user ? db.getSavedNiches(user.id) : [];
       return NextResponse.json({
         success: result.success,
         result: result.result,
@@ -36,7 +39,7 @@ export async function POST(req: NextRequest) {
     }
 
     const output = LivePulseEngine.recalculateAll();
-    const savedNiches = db.getSavedNiches();
+    const savedNiches = user ? db.getSavedNiches(user.id) : [];
     return NextResponse.json({
       success: output.success,
       results: output.results,

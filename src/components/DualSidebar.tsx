@@ -21,6 +21,7 @@ import {
   X,
   Target,
   Sparkle,
+  ShieldCheck,
 } from 'lucide-react';
 import { NAVIGATION_MODULES, PrimaryModule, SubNavItem } from '@/lib/navigationConfig';
 import { useLivePulse } from './LivePulseProvider';
@@ -202,6 +203,24 @@ export default function DualSidebar() {
               {isRecalculating ? 'Calculating...' : `${pulseCountdown}s countdown`}
             </div>
           </div>
+
+          {/* Admin User Management (Exclusive to Admin) */}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              title="Admin User Management"
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition group relative ${
+                pathname.startsWith('/admin')
+                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
+                  : 'bg-purple-950/40 text-purple-400 hover:bg-purple-900/60 hover:text-purple-200 border border-purple-800/50'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <div className="absolute left-16 px-3 py-1.5 bg-slate-800 text-purple-300 text-xs font-semibold rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl border border-slate-700 z-50">
+                Admin User Management
+              </div>
+            </Link>
+          )}
 
           {/* User Avatar & Logout */}
           <button

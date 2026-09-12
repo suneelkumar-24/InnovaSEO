@@ -66,70 +66,15 @@ export async function POST(req: NextRequest) {
       return response;
     }
 
-    // 2. REGISTER (Users create their own personal workspace account)
+    // 2. REGISTER (Disabled for public - Admin provisions accounts)
     if (action === 'register') {
-      const { email, password, name } = body;
-      if (!email || !password || !name) {
-        return NextResponse.json(
-          { success: false, error: 'Full name, email, and password are required.' },
-          { status: 400 }
-        );
-      }
-
-      const cleanEmail = email.trim().toLowerCase();
-      if (!cleanEmail.includes('@') || !cleanEmail.includes('.')) {
-        return NextResponse.json(
-          { success: false, error: 'Please enter a valid email address.' },
-          { status: 400 }
-        );
-      }
-
-      if (password.length < 6) {
-        return NextResponse.json(
-          { success: false, error: 'Password must be at least 6 characters.' },
-          { status: 400 }
-        );
-      }
-
-      const existing = db.getUserByEmail(cleanEmail);
-      if (existing) {
-        return NextResponse.json(
-          { success: false, error: 'An account with this email already exists. Please sign in.' },
-          { status: 409 }
-        );
-      }
-
-      const safeUser = db.createUser(cleanEmail, password, name.trim(), 'user');
-      const token = signJwt({
-        userId: safeUser.id,
-        email: safeUser.email,
-        role: safeUser.role,
-      });
-
-      const response = NextResponse.json({
-        success: true,
-        user: safeUser,
-        token,
-      });
-
-      response.cookies.set({
-        name: TOKEN_NAME,
-        value: token,
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 60 * 60 * 24 * 7,
-      });
-
-      db.addLog({
-        userId: safeUser.id,
-        level: 'info',
-        module: 'Auth',
-        message: `New user personal workspace registered: ${safeUser.email}`,
-      });
-
-      return response;
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Public registration is disabled. User accounts are provisioned exclusively by the Administrator with assigned passwords.',
+        },
+        { status: 403 }
+      );
     }
 
     // 3. LOGOUT

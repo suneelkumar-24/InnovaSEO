@@ -28,8 +28,8 @@ export default function Sidebar() {
   const { isRecalculating, pulseCountdown, autoSyncEnabled } = useLivePulse();
   const { user, isAdmin, logout } = useAuth();
 
-  // Hide sidebar on public landing page and login page for full-width layout
-  if (pathname === '/' || pathname === '/login') {
+  // Hide sidebar on public landing page, login page, or if not logged in
+  if (pathname === '/' || pathname === '/login' || !user) {
     return null;
   }
 

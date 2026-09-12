@@ -98,8 +98,8 @@ export default function DualSidebar() {
       .filter((sec) => sec.items.length > 0);
   }, [activeModule, searchQuery, isAdmin]);
 
-  // Hide completely on landing page or login page (called after all hooks to comply with React rules)
-  if (pathname === '/' || pathname === '/login') {
+  // Hide completely on landing page, login page, or if not logged in (called after all hooks to comply with React rules)
+  if (pathname === '/' || pathname === '/login' || !user) {
     return null;
   }
 

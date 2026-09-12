@@ -29,7 +29,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await fetch('/api/auth', {
         method: 'GET',
-        headers: { credentials: 'include' },
+        credentials: 'include',
+        cache: 'no-store',
       });
       if (res.ok) {
         const data = await res.json();
@@ -56,7 +57,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!loading && !user && pathname !== '/login') {
       const redirectParam = pathname === '/' ? '' : `?redirect=${encodeURIComponent(pathname)}`;
-      router.replace(`/login${redirectParam}`);
+      if (typeof window !== 'undefined') {
+        window.location.replace(`/login${redirectParam}`);
+      } else {
+        router.replace(`/login${redirectParam}`);
+      }
     }
   }, [loading, user, pathname, router]);
 
@@ -188,6 +193,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     : 0;
   const quotaExhausted = Boolean(user && user.role !== 'admin' && credits <= 0);
 
+  // Protect all non-login routes from rendering to unauthenticated users
+  const isLoginPage = pathname === '/login';
+
   return (
     <AuthContext.Provider
       value={{
@@ -203,7 +211,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         refreshUser: fetchCurrentUser,
       }}
     >
-      {children}
+      {isLoginPage ? (
+        children
+      ) : loading ? (
+        <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-[#faf9f6]">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-10 h-10 border-3 border-purple-600 border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs font-bold text-slate-500 tracking-wider uppercase">
+              Verifying Authorization...
+            </p>
+          </div>
+        </div>
+      ) : !user ? (
+        <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-[#faf9f6]">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-10 h-10 border-3 border-purple-600 border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs font-bold text-slate-500 tracking-wider uppercase">
+              Redirecting to Login...
+            </p>
+          </div>
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 }

@@ -31,6 +31,16 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'avoid_list'>('users');
 
+  // Create User Modal State
+  const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [newUserRole, setNewUserRole] = useState<'user' | 'admin'>('user');
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [createUserError, setCreateUserError] = useState<string | null>(null);
+  const [createdUserNotice, setCreatedUserNotice] = useState<string | null>(null);
+
   const fetchAdminData = async () => {
     try {
       const res = await fetch('/api/admin');
@@ -45,6 +55,56 @@ export default function AdminPage() {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreatingUser(true);
+    setCreateUserError(null);
+    try {
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create_user',
+          name: newUserName,
+          email: newUserEmail,
+          password: newUserPassword,
+          role: newUserRole,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to create user');
+      }
+      setCreatedUserNotice(`User ${newUserEmail} created successfully! Credentials ready.`);
+      setNewUserName('');
+      setNewUserEmail('');
+      setNewUserPassword('');
+      setIsCreateUserOpen(false);
+      fetchAdminData();
+    } catch (err: any) {
+      setCreateUserError(err.message);
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, email: string) => {
+    if (!confirm(`Are you sure you want to delete user: ${email}?`)) return;
+    try {
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete_user', userId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchAdminData();
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -104,7 +164,14 @@ export default function AdminPage() {
 
   return (
     <div className="flex-1 flex flex-col bg-[#faf9f6] min-h-screen font-sans">
-      <Header title="Admin Control Center" subtitle="System administration, user management, and policy compliance" />
+      <Header
+        title="Admin Control Center"
+        subtitle="System administration, user management, and policy compliance"
+        breadcrumbs={[
+          { label: 'Home', href: '/dashboard' },
+          { label: 'Admin Control', href: '/admin' },
+        ]}
+      />
 
       <main className="flex-1 p-6 sm:p-8 max-w-6xl mx-auto w-full space-y-8">
         {/* Telemetry Stats Grid */}
@@ -169,12 +236,32 @@ export default function AdminPage() {
         {/* Tab 1: User Management */}
         {activeTab === 'users' && (
           <div className="bg-white border border-slate-200/90 rounded-3xl overflow-hidden shadow-sm">
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+            <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h3 className="text-base font-serif font-bold text-slate-900">Registered Users & Quotas</h3>
                 <p className="text-xs text-slate-500">Manage user authorization roles and track research API volume</p>
               </div>
+
+              <button
+                onClick={() => setIsCreateUserOpen(true)}
+                className="px-4 py-2 rounded-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-600/20 transition self-start sm:self-auto"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Create New User</span>
+              </button>
             </div>
+
+            {createdUserNotice && (
+              <div className="mx-6 mt-4 p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{createdUserNotice}</span>
+                </div>
+                <button onClick={() => setCreatedUserNotice(null)} className="text-emerald-700 hover:text-emerald-900">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs sm:text-sm text-slate-700">
@@ -184,6 +271,7 @@ export default function AdminPage() {
                     <th className="py-3.5 px-4">Role</th>
                     <th className="py-3.5 px-4 text-center">API Usage Runs</th>
                     <th className="py-3.5 px-4">Joined Date</th>
+                    <th className="py-3.5 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium">
@@ -206,11 +294,119 @@ export default function AdminPage() {
                       <td className="py-3.5 px-4 text-slate-500 text-xs">
                         {new Date(u.createdAt).toLocaleDateString()}
                       </td>
+                      <td className="py-3.5 px-4 text-right">
+                        {u.email !== 'admin@nichehunter.io' && (
+                          <button
+                            onClick={() => handleDeleteUser(u.id, u.email)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                            title="Delete User"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+
+            {/* Modal: Create User */}
+            {isCreateUserOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+                <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 border border-slate-200">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <h4 className="text-base font-serif font-bold text-slate-900">Create New User Account</h4>
+                    <button
+                      onClick={() => {
+                        setIsCreateUserOpen(false);
+                        setCreateUserError(null);
+                      }}
+                      className="text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {createUserError && (
+                    <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
+                      {createUserError}
+                    </div>
+                  )}
+
+                  <form onSubmit={handleCreateUser} className="space-y-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Full Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={newUserName}
+                        onChange={(e) => setNewUserName(e.target.value)}
+                        placeholder="e.g. John Doe / Client Name"
+                        className="w-full px-3.5 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Email Address</label>
+                      <input
+                        type="email"
+                        required
+                        value={newUserEmail}
+                        onChange={(e) => setNewUserEmail(e.target.value)}
+                        placeholder="user@example.com"
+                        className="w-full px-3.5 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Password (min. 6 characters)</label>
+                      <input
+                        type="text"
+                        required
+                        minLength={6}
+                        value={newUserPassword}
+                        onChange={(e) => setNewUserPassword(e.target.value)}
+                        placeholder="Assign password (e.g. Client@12345)"
+                        className="w-full px-3.5 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Role Permission</label>
+                      <select
+                        value={newUserRole}
+                        onChange={(e: any) => setNewUserRole(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      >
+                        <option value="user">Standard User (Research, Scans, Blueprints)</option>
+                        <option value="admin">Administrator (Full Access & User Control)</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCreateUserOpen(false);
+                          setCreateUserError(null);
+                        }}
+                        className="px-4 py-2 rounded-full border border-slate-300 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={creatingUser}
+                        className="px-5 py-2 rounded-full bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition shadow-md disabled:opacity-50"
+                      >
+                        {creatingUser ? 'Creating...' : 'Create Account'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

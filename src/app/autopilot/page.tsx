@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
@@ -39,6 +39,7 @@ import {
 
 const SECTORS: Array<{ id: AutopilotSector; label: string; icon: any; color: string }> = [
   { id: 'challenger_brands', label: 'Challenger Brand Menus', icon: Flame, color: 'text-amber-600 bg-amber-50 border-amber-200' },
+  { id: 'fast_mover_viral_seeds', label: 'Fast-Mover Viral Seeds', icon: Zap, color: 'text-yellow-600 bg-yellow-50 border-yellow-200' },
   { id: 'programmatic_data', label: 'Programmatic Specs & Dimensions', icon: Database, color: 'text-indigo-600 bg-indigo-50 border-indigo-200' },
   { id: 'micro_calculators', label: 'Micro Utility Calculators', icon: Calculator, color: 'text-purple-600 bg-purple-50 border-purple-200' },
   { id: 'nano_affiliate', label: 'Nano-Affiliate Gear', icon: Store, color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
@@ -57,9 +58,16 @@ export default function AutopilotRadarPage() {
   const [filterTier, setFilterTier] = useState<string>('all');
   const [copiedSeed, setCopiedSeed] = useState<string | null>(null);
 
-  const fetchAutopilotStatus = async () => {
+  const isFetchingRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const fetchAutopilotStatus = async (signal?: AbortSignal) => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
     try {
-      const res = await fetch('/api/autopilot');
+      const res = await fetch('/api/autopilot', {
+        signal: signal || abortControllerRef.current?.signal,
+      });
       if (!res.ok) return;
       const contentType = res.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) return;
@@ -67,21 +75,32 @@ export default function AutopilotRadarPage() {
       if (data.success) {
         setStatus(data);
       }
-    } catch (e) {
-      console.error('Failed to fetch autopilot status:', e);
+    } catch (e: any) {
+      if (e?.name === 'AbortError') return;
+      // Gracefully handle transient network failure without triggering Next.js dev overlay
+      console.warn('Autopilot status sync warning (offline or server retrying):', e?.message || e);
     } finally {
+      isFetchingRef.current = false;
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAutopilotStatus();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    fetchAutopilotStatus(controller.signal);
+
     // Poll status periodically when document is visible
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
-      fetchAutopilotStatus();
+      fetchAutopilotStatus(abortControllerRef.current?.signal);
     }, 30000);
-    return () => clearInterval(interval);
+
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
   }, []);
 
   const handleToggleAutopilot = async () => {
@@ -98,12 +117,12 @@ export default function AutopilotRadarPage() {
       if (data.success) {
         fetchAutopilotStatus();
       }
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      console.warn('Toggle autopilot failed:', e?.message || e);
     }
   };
 
-  const handleTriggerRunNow = async () => {
+  const handleTriggerRunNow = async (opts: { forceAi?: boolean; batchSize?: number } = {}) => {
     setRunningBatch(true);
     setBatchProgress(10);
 
@@ -117,8 +136,9 @@ export default function AutopilotRadarPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'run_now',
-          batchSize: selectedBatchSize,
+          batchSize: opts.batchSize || selectedBatchSize,
           sector: filterSector !== 'all' ? filterSector : undefined,
+          forceAiDiscovery: Boolean(opts.forceAi),
         }),
       });
       if (!res.ok) return;
@@ -135,7 +155,8 @@ export default function AutopilotRadarPage() {
       }
     } catch (e: any) {
       clearInterval(progInterval);
-      alert(e.message || 'Error running autopilot batch');
+      console.warn('Autopilot run failed:', e?.message || e);
+      alert(e?.message || 'Error running autopilot batch');
     } finally {
       setTimeout(() => {
         setRunningBatch(false);
@@ -153,8 +174,8 @@ export default function AutopilotRadarPage() {
         body: JSON.stringify({ action: 'clear' }),
       });
       fetchAutopilotStatus();
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      console.warn('Clear stream failed:', e?.message || e);
     }
   };
 
@@ -177,8 +198,12 @@ export default function AutopilotRadarPage() {
       <Header
         title="Autonomous Autopilot Radar"
         subtitle="Self-operating micro-niche hunting engine scouting Tier 1 markets for DR 0-15 anomalies without human input"
+        breadcrumbs={[
+          { label: 'Home', href: '/dashboard' },
+          { label: 'AI Autopilot Radar', href: '/autopilot' },
+        ]}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           {/* Autopilot Status Badge & Toggle */}
           <button
             onClick={handleToggleAutopilot}
@@ -196,18 +221,29 @@ export default function AutopilotRadarPage() {
             <span>{status?.active ? 'Autopilot Active' : 'Autopilot Paused'}</span>
           </button>
 
+          {/* AI Novelty Brainstorm Button */}
+          <button
+            onClick={() => handleTriggerRunNow({ forceAi: true, batchSize: 5 })}
+            disabled={runningBatch}
+            className="px-4 py-2 rounded-full bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-indigo-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition active:scale-95 disabled:opacity-50"
+            title="Dynamically invent 5 brand new, non-repetitive micro-niches across unexpected industries using AI"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+            <span>✨ AI Brainstorm 5 Novel Niches</span>
+          </button>
+
           {/* Trigger Autonomous Run Now Button */}
           <button
-            onClick={handleTriggerRunNow}
+            onClick={() => handleTriggerRunNow()}
             disabled={runningBatch}
-            className="px-5 py-2 rounded-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-purple-600/20 transition active:scale-95 disabled:opacity-50"
+            className="px-4 py-2 rounded-full bg-slate-900 hover:bg-black text-white font-bold text-xs flex items-center gap-2 shadow-md transition active:scale-95 disabled:opacity-50"
           >
             {runningBatch ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
             ) : (
-              <Zap className="w-3.5 h-3.5 text-white" />
+              <Zap className="w-3.5 h-3.5 text-amber-400" />
             )}
-            <span>{runningBatch ? `Scouting (${batchProgress}%)...` : '⚡ Trigger Autonomous Hunt Now'}</span>
+            <span>{runningBatch ? `Scouting (${batchProgress}%)...` : '⚡ Hunt Next Batch'}</span>
           </button>
         </div>
       </Header>
@@ -272,21 +308,32 @@ export default function AutopilotRadarPage() {
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              <div className="bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-2xl text-left space-y-1">
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="bg-white/10 backdrop-blur-md border border-white/20 p-3.5 rounded-2xl text-left space-y-1">
                 <span className="text-[10px] text-purple-200 uppercase font-bold block">Autonomous Scan Scope</span>
                 <span className="text-xs font-bold text-white block">US, UK, Germany, Canada, Australia</span>
-                <span className="text-[10px] text-emerald-300 font-semibold block">✓ Zero AI Overview Prioritization</span>
+                <span className="text-[10px] text-emerald-300 font-semibold block">✓ 10+ Diverse Non-Repetitive Sectors</span>
               </div>
 
-              <button
-                onClick={handleTriggerRunNow}
-                disabled={runningBatch}
-                className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-white text-purple-900 hover:bg-purple-50 font-bold text-xs flex items-center justify-center gap-2 shadow-xl transition active:scale-95 whitespace-nowrap"
-              >
-                <Zap className="w-4 h-4 text-purple-600" />
-                <span>{runningBatch ? 'Scouting Market Index...' : 'Hunt Next Batch Now'}</span>
-              </button>
+              <div className="flex flex-col gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => handleTriggerRunNow({ forceAi: true, batchSize: 5 })}
+                  disabled={runningBatch}
+                  className="w-full sm:w-auto px-5 py-3 rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-slate-950 font-black text-xs flex items-center justify-center gap-2 shadow-xl hover:brightness-105 transition active:scale-95 whitespace-nowrap"
+                >
+                  <Sparkles className="w-4 h-4 text-purple-900" />
+                  <span>{runningBatch ? 'AI Brainstorming...' : '✨ AI Brainstorm 5 Novel Niches'}</span>
+                </button>
+
+                <button
+                  onClick={() => handleTriggerRunNow()}
+                  disabled={runningBatch}
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-full bg-white/20 hover:bg-white/30 border border-white/30 text-white font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95 whitespace-nowrap"
+                >
+                  <Zap className="w-3.5 h-3.5 text-yellow-300" />
+                  <span>{runningBatch ? 'Scouting Market Index...' : '⚡ Hunt Next Batch Now'}</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -396,7 +443,7 @@ export default function AutopilotRadarPage() {
                 </p>
               </div>
               <button
-                onClick={handleTriggerRunNow}
+                onClick={() => handleTriggerRunNow()}
                 disabled={runningBatch}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md shadow-purple-600/20 transition"
               >

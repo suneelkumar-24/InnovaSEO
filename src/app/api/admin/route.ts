@@ -53,6 +53,45 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, message: 'Logs cleared.' });
     }
 
+    if (action === 'create_user') {
+      const { email, password, name, role } = body;
+      if (!email || !password || !name) {
+        return NextResponse.json(
+          { success: false, error: 'Name, email, and password are required.' },
+          { status: 400 }
+        );
+      }
+      if (password.length < 6) {
+        return NextResponse.json(
+          { success: false, error: 'Password must be at least 6 characters.' },
+          { status: 400 }
+        );
+      }
+      const newUser = db.createUser(email, password, name, role || 'user');
+      db.addLog({
+        userId: user?.id,
+        level: 'info',
+        module: 'Admin',
+        message: `Admin created user account: ${email} (${role || 'user'})`,
+      });
+      return NextResponse.json({ success: true, user: newUser });
+    }
+
+    if (action === 'delete_user') {
+      const { userId } = body;
+      if (!userId) {
+        return NextResponse.json({ success: false, error: 'User ID is required.' }, { status: 400 });
+      }
+      db.deleteUser(userId);
+      db.addLog({
+        userId: user?.id,
+        level: 'warn',
+        module: 'Admin',
+        message: `Admin deleted user ID: ${userId}`,
+      });
+      return NextResponse.json({ success: true, message: 'User deleted.' });
+    }
+
     return NextResponse.json({ success: false, error: 'Invalid admin action.' }, { status: 400 });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

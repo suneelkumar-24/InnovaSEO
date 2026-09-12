@@ -237,18 +237,27 @@ export default function DashboardPage() {
 
         {/* 4. Recent Research History Table (Clean White Card) */}
         <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div className="flex flex-wrap items-center justify-between pb-4 border-b border-slate-100 gap-3">
             <div>
               <h3 className="text-xl font-serif font-bold text-slate-900">Recent Niche Researches</h3>
               <p className="text-sm text-slate-500 mt-0.5">Complete historical record with live updated viability metrics.</p>
             </div>
-            <Link
-              href="/research/new"
-              className="text-sm font-bold text-purple-600 hover:text-purple-700 flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" />
-              <span>New Analysis</span>
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/history"
+                className="text-xs font-bold text-slate-700 hover:text-purple-600 bg-slate-100 hover:bg-purple-50 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>View All History ({researches.length}) →</span>
+              </Link>
+              <Link
+                href="/research/new"
+                className="text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-xs transition"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>New Run</span>
+              </Link>
+            </div>
           </div>
 
           {loading ? (
@@ -287,6 +296,15 @@ export default function DashboardPage() {
                     >
                       <td className="py-4 px-5 font-bold text-slate-900 group-hover:text-purple-700 flex items-center gap-2 text-base">
                         <span>{res.seedKeyword}</span>
+                        {res.searchOrigin === 'auto_hunter' ? (
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200">⚡ Auto Radar</span>
+                        ) : res.searchOrigin === 'marketplace_reverse' ? (
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200">🏪 Flippa</span>
+                        ) : res.searchOrigin === 'anomaly_scanner' ? (
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">🔥 Anomaly</span>
+                        ) : (
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200">👤 Manual</span>
+                        )}
                         <ExternalLink className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition" />
                       </td>
                       <td className="py-4 px-4">

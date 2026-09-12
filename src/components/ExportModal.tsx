@@ -15,7 +15,7 @@ export default function ExportModal({ report, isOpen, onClose }: ExportModalProp
 
   if (!isOpen) return null;
 
-  const handleExport = async (type: 'pdf' | 'excel' | 'csv' | 'json') => {
+  const handleExport = async (type: 'pdf' | 'excel' | 'csv' | 'json' | 'mapping') => {
     try {
       setExportingType(type);
       const { ExportEngine } = await import('@/lib/export');
@@ -27,6 +27,8 @@ export default function ExportModal({ report, isOpen, onClose }: ExportModalProp
         ExportEngine.generateCsv(report);
       } else if (type === 'json') {
         ExportEngine.generateJson(report);
+      } else if (type === 'mapping') {
+        ExportEngine.generateCompetitorMappingSheet(report);
       }
       onClose();
     } catch (err) {
@@ -56,7 +58,33 @@ export default function ExportModal({ report, isOpen, onClose }: ExportModalProp
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
+        {/* Featured: 90-Day Competitor Keyword Mapping Sheet */}
+        <button
+          onClick={() => handleExport('mapping')}
+          disabled={exportingType !== null}
+          className="w-full p-4 rounded-2xl bg-amber-50/80 border-2 border-amber-300 hover:border-amber-500 text-left transition group space-y-2 shadow-xs disabled:opacity-50"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-amber-200/80 border border-amber-300 flex items-center justify-center text-amber-800 group-hover:scale-105 transition">
+                {exportingType === 'mapping' ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-900 group-hover:text-amber-900">
+                  ⚡ 90-Day Keyword Mapping Sheet (.xlsx)
+                </p>
+                <p className="text-[11px] text-slate-600">
+                  Fast-Mover Schedule: Day 1–Day 60 Schedule, Slugs, Primary &amp; Backup Competitors
+                </p>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-200 text-amber-900 uppercase">
+              Google Sheets Ready
+            </span>
+          </div>
+        </button>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
           {/* PDF Report */}
           <button
             onClick={() => handleExport('pdf')}

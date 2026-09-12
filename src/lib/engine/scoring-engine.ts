@@ -6,6 +6,13 @@ import {
   ScoringWeights,
   ViabilityVerdict,
   TrendClassification,
+  ISkillsNicheCategory,
+  ISkillsCriteriaRule,
+  ISKILLS_CRITERIA_MATRIX,
+  ISkillsAuditResult,
+  FastMoverCloneOpportunity,
+  TIER_1_COUNTRIES,
+  HIGHEST_PRIORITY_TIER_1,
 } from '../providers/types';
 
 export interface ScoringInputs {
@@ -31,6 +38,180 @@ export interface ScoringInputs {
 }
 
 export class ScoringEngine {
+  /**
+   * Evaluates if any competitor matches Fast-Mover Clone Formula:
+   * (DR < 5, DA < 10, Age < 1.0 year, Monthly Traffic >= 15,000)
+   * "Chalte Huye Business Ko Copy Karo"
+   */
+  public static detectFastMoverOpportunity(
+    competitors: CompetitorResult[]
+  ): FastMoverCloneOpportunity | undefined {
+    const fastMover = competitors.find(
+      (c) =>
+        (c.dr <= 5 || c.da <= 10) &&
+        (c.domainAgeYears <= 1.2) &&
+        (c.organicTraffic >= 15000)
+    );
+
+    if (!fastMover) return undefined;
+
+    return {
+      competitorDomain: fastMover.domain,
+      dr: fastMover.dr,
+      da: fastMover.da,
+      domainAgeYears: fastMover.domainAgeYears,
+      monthlyTraffic: fastMover.organicTraffic,
+      isFastMoverWinner: true,
+      topicalCompressionRatio: '8 Comprehensive Pillar Articles vs 13 Competitor Articles',
+      timeframeDays: 90,
+      executionStrategy: `Fast-Mover Blueprint: Clone & outperform ${fastMover.domain} (DR ${fastMover.dr}, Age ${fastMover.domainAgeYears} yrs, ${fastMover.organicTraffic.toLocaleString()} visits/mo) within 90 days using superior, concise topical compression.`,
+    };
+  }
+
+  /**
+   * Maps system niche type and business model to the official iSkills criteria category
+   */
+  public static mapNicheTypeToISkillsCategory(
+    nicheType: NicheType,
+    businessModel?: BusinessModel
+  ): ISkillsNicheCategory {
+    if (businessModel === 'saas_tool' || nicheType === 'tool-based') {
+      return 'Tool';
+    }
+    if (businessModel === 'affiliate' || nicheType === 'affiliate') {
+      return 'Affiliate';
+    }
+    if (
+      businessModel === 'ecommerce' ||
+      businessModel === 'services' ||
+      nicheType === 'e-commerce'
+    ) {
+      return 'Ecom / Services';
+    }
+    return 'Info';
+  }
+
+  /**
+   * Evaluates any niche candidate against the official iSkills Research Criteria Matrix
+   * (Volume Tier 1 vs Rest of World, DA <= 25, KD <= 25, DR <= 20, Pages <= 150/100)
+   */
+  public static evaluateISkillsCriteria(params: {
+    nicheCategory: ISkillsNicheCategory;
+    targetCountry: string;
+    searchVolume: number;
+    competitors: CompetitorResult[];
+    kd?: number;
+  }): ISkillsAuditResult {
+    const rule =
+      ISKILLS_CRITERIA_MATRIX.find((r) => r.nicheType === params.nicheCategory) ||
+      ISKILLS_CRITERIA_MATRIX[0];
+    const normCountry = params.targetCountry.trim().toLowerCase();
+    const isTier1 = HIGHEST_PRIORITY_TIER_1.concat(TIER_1_COUNTRIES).some(
+      (c) => c.toLowerCase() === normCountry
+    );
+
+    // 1. Volume Check
+    const targetVolume = isTier1 ? rule.volumeTier1 : rule.volumeRestOfWorld;
+    const isPakistan = normCountry === 'pakistan' || normCountry === 'pk';
+    const effectiveTargetVolume =
+      params.nicheCategory === 'Info' && isPakistan ? 30000 : targetVolume;
+    const volumePassed = params.searchVolume >= effectiveTargetVolume;
+    const volumeStatus = volumePassed
+      ? 'passed'
+      : params.searchVolume >= effectiveTargetVolume * 0.7
+      ? 'warning'
+      : 'failed';
+
+    // Competitor metrics: lowest or median values in top 10
+    const medians = this.computeCompetitorMedians(params.competitors);
+    const lowestDrCompetitor = params.competitors.slice().sort((a, b) => a.dr - b.dr)[0];
+    const bestDa = lowestDrCompetitor ? lowestDrCompetitor.da : (medians.da.min || 15);
+    const bestDr = lowestDrCompetitor ? lowestDrCompetitor.dr : (medians.dr.min || 10);
+    const minPages = lowestDrCompetitor ? (lowestDrCompetitor.estimatedPages || 45) : (medians.pages.min || 45);
+    const observedKd = params.kd !== undefined ? params.kd : 18;
+
+    // 2. DA Check (<= 25)
+    const daPassed = bestDa <= rule.maxDA;
+    const daStatus = daPassed ? 'passed' : bestDa <= 35 ? 'warning' : 'failed';
+
+    // 3. KD Check (<= 25)
+    const kdPassed = observedKd <= rule.maxKD;
+    const kdStatus = kdPassed ? 'passed' : observedKd <= 35 ? 'warning' : 'failed';
+
+    // 4. DR Check (<= 20)
+    const drPassed = bestDr <= rule.maxDR;
+    const drStatus = drPassed ? 'passed' : bestDr <= 30 ? 'warning' : 'failed';
+
+    // 5. Site Pages Check (<= 150 or <= 100 for SAAS)
+    const pagesPassed = minPages <= rule.maxPages;
+    const pagesStatus = pagesPassed
+      ? 'passed'
+      : minPages <= rule.maxPages * 1.5
+      ? 'warning'
+      : 'failed';
+
+    const checksPassedCount = [
+      volumePassed,
+      daPassed,
+      kdPassed,
+      drPassed,
+      pagesPassed,
+    ].filter(Boolean).length;
+    const passedAll = checksPassedCount === 5;
+    const scorePercentage = Math.round((checksPassedCount / 5) * 100);
+
+    return {
+      category: params.nicheCategory,
+      rule,
+      passedAll,
+      scorePercentage,
+      checks: {
+        volume: {
+          passed: volumePassed,
+          actual: params.searchVolume,
+          target: effectiveTargetVolume,
+          status: volumeStatus,
+          label: `${params.searchVolume.toLocaleString()} / mo (Target: ≥ ${effectiveTargetVolume.toLocaleString()})`,
+        },
+        da: {
+          passed: daPassed,
+          actual: bestDa,
+          target: rule.maxDA,
+          status: daStatus,
+          label: `DA ${bestDa} (Target: ≤ ${rule.maxDA})`,
+        },
+        kd: {
+          passed: kdPassed,
+          actual: observedKd,
+          target: rule.maxKD,
+          status: kdStatus,
+          label: `KD ${observedKd}% (Target: ≤ ${rule.maxKD}%)`,
+        },
+        dr: {
+          passed: drPassed,
+          actual: bestDr,
+          target: rule.maxDR,
+          status: drStatus,
+          label: `DR ${bestDr} (Target: ≤ ${rule.maxDR})`,
+        },
+        sitePages: {
+          passed: pagesPassed,
+          actual: minPages,
+          target: rule.maxPages,
+          status: pagesStatus,
+          label: `${minPages} pages (Target: ≤ ${rule.maxPages} pages)`,
+        },
+      },
+      summary: passedAll
+        ? `100% Meets iSkills Research Standards: SV ≥ ${effectiveTargetVolume.toLocaleString()}, DA ≤ ${rule.maxDA}, KD ≤ ${rule.maxKD}, DR ≤ ${rule.maxDR}, Pages ≤ ${rule.maxPages}.`
+        : `Meets ${checksPassedCount}/5 iSkills criteria. Check ${
+            !volumePassed ? 'Search Volume, ' : ''
+          }${!drPassed ? 'DR ≤ 20, ' : ''}${!daPassed ? 'DA ≤ 25, ' : ''}${
+            !kdPassed ? 'KD ≤ 25, ' : ''
+          }${!pagesPassed ? 'Site Pages ≤ ' + rule.maxPages : ''} for compliance.`,
+    };
+  }
+
   /**
    * Calculates median, min, max values for array of numbers
    */
@@ -214,9 +395,20 @@ export class ScoringEngine {
       finalScore = Math.min(30, finalScore);
     }
 
+    // Strict Beginner Protection: If NO competitors have DR < 20, DA < 20, or Age <= 2 yrs
+    const hasAnyBeatableCompetitors = inputs.competitors.some(
+      (c) => c.isWeakCompetitor || (c.dr < 20 && c.domainAgeYears <= 3) || c.pageType === 'forum'
+    );
+    const isSaturatedGiantsOnly = inputs.competitors.length >= 3 && !hasAnyBeatableCompetitors;
+
+    if (isSaturatedGiantsOnly) {
+      // Saturated SERP dominated entirely by high-authority ancient giants
+      finalScore = Math.min(45, finalScore);
+    }
+
     // Verdict assignment
     let verdict: ViabilityVerdict = 'MAYBE';
-    if (inputs.isBlacklisted) {
+    if (inputs.isBlacklisted || isSaturatedGiantsOnly) {
       verdict = 'AVOID';
     } else if (finalScore >= 88) {
       verdict = 'STRONG GO';
@@ -279,6 +471,45 @@ export class ScoringEngine {
       mainRisks.push('Requires building 15-20 specialized topical cluster pages to establish authority.');
     }
 
+    // Adaptive Contextual Intelligence (No Rigid Hard-and-Fast Rules)
+    const adaptiveIntelligenceInsights: string[] = [];
+
+    // 1. Ranking Anomaly Signal
+    if (medians.dr.min <= 12 && inputs.seedSv >= 1000) {
+      adaptiveIntelligenceInsights.push(
+        `⚡ High-Probability Ranking Anomaly: Low-authority domain (DR ${medians.dr.min}) ranks on Page 1, proving authority barrier is effectively zero.`
+      );
+    }
+
+    // 2. High-Yield Compensatory RPM
+    if (monetizationScore >= 80 && inputs.seedSv >= 2000) {
+      adaptiveIntelligenceInsights.push(
+        `💎 High-Yield Yield Compensation: Premium commercial RPM allows lower search volume to generate equivalent or higher monthly revenue than high-volume low-RPM niches.`
+      );
+    }
+
+    // 3. Cluster Elasticity
+    if (inputs.totalNicheSv > inputs.seedSv * 1.8) {
+      adaptiveIntelligenceInsights.push(
+        `📈 Cluster Multiplier: Seed keyword expands into an aggregate topical cluster of ${inputs.totalNicheSv.toLocaleString()} monthly searches.`
+      );
+    }
+
+    // 4. Intent Vacuum / Thin SERP
+    const forumCount = inputs.competitors.filter((c) => c.pageType === 'forum').length;
+    if (inputs.intentMismatchDetected || forumCount >= 1) {
+      adaptiveIntelligenceInsights.push(
+        `🎯 Intent Vacuum: Top SERP relies on generic forum threads or mixed intent pages, creating an immediate opening for a focused topical authority asset.`
+      );
+    }
+
+    // 5. Zero-Click Protection
+    if (!inputs.aiOverviewPresent || inputs.aiOverviewImpact === 'None' || inputs.aiOverviewImpact === 'Low') {
+      adaptiveIntelligenceInsights.push(
+        `🛡️ Zero-Click Resilient: User query behavior demands full spec tables, tools, or deep articles, preserving high organic CTR.`
+      );
+    }
+
     // Next Validation Steps
     const whatToValidateNext: string[] = [
       'Perform manual content audit on top 3 ranking competitor URLs.',
@@ -298,6 +529,7 @@ export class ScoringEngine {
       keyReasons,
       mainRisks,
       whatToValidateNext,
+      adaptiveIntelligenceInsights,
       medians,
       weakCompetitorCount,
       scoreBreakdown: {

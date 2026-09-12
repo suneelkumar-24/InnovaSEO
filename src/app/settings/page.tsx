@@ -36,12 +36,27 @@ export default function SettingsPage() {
   const [testResult, setTestResult] = useState<{ provider: string; success: boolean; message: string } | null>(null);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
+  const [savingKeys, setSavingKeys] = useState(false);
+  const [keysSavedSuccess, setKeysSavedSuccess] = useState(false);
+  const [defaultProvider, setDefaultProvider] = useState<string>('auto');
+  const [apiKeys, setApiKeys] = useState({
+    anthropic: '',
+    gemini: '',
+    groq: '',
+    openrouter: '',
+    serpapi: '',
+    moz: '',
+    openpagerank: '',
+  });
+
   const fetchSettings = async () => {
     try {
       const res = await fetch('/api/settings');
       const data = await res.json();
-      if (data.success && data.settings?.scoringWeights) {
-        setWeights(data.settings.scoringWeights);
+      if (data.success) {
+        if (data.settings?.scoringWeights) {
+          setWeights(data.settings.scoringWeights);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -53,6 +68,34 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchSettings();
   }, []);
+
+  const handleSaveApiKeys = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingKeys(true);
+    setKeysSavedSuccess(false);
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_api_keys',
+          keys: apiKeys,
+          defaultProvider,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setKeysSavedSuccess(true);
+        setTimeout(() => setKeysSavedSuccess(false), 3500);
+      } else {
+        alert(data.error || 'Failed to update API keys.');
+      }
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setSavingKeys(false);
+    }
+  };
 
   const handleSaveWeights = async () => {
     setSavingWeights(true);
@@ -105,167 +148,255 @@ export default function SettingsPage() {
 
   return (
     <div className="flex-1 flex flex-col bg-[#faf9f6] min-h-screen">
-      <Header title="Settings & API Management" subtitle="Configure AI keys, SEO provider connections, and SEBT-NEXT scoring weights" />
+      <Header
+        title="Settings & API Management"
+        subtitle="Configure AI keys, SEO provider connections, and SEBT-NEXT scoring weights"
+        breadcrumbs={[
+          { label: 'Home', href: '/dashboard' },
+          { label: 'Settings & APIs', href: '/settings' },
+        ]}
+      />
 
       <main className="flex-1 p-6 sm:p-8 max-w-6xl mx-auto w-full space-y-8 font-sans">
         {/* 1. API Integrations & Key Management */}
-        <section className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm text-slate-800">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+        <section className="bg-white border-2 border-slate-200/90 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm text-slate-800">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 border border-purple-200 text-purple-700 text-xs font-bold uppercase mb-2">
-                <Key className="w-3.5 h-3.5" /> Provider Connections
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100 border border-purple-200 text-purple-800 text-xs font-black uppercase mb-2">
+                <Key className="w-3.5 h-3.5" /> Provider Connections & API Keys
               </div>
-              <h2 className="text-2xl font-serif font-bold text-slate-900">Connected SEO & AI Providers</h2>
-              <p className="text-xs sm:text-sm text-slate-500">
-                Manage backend API keys and test live connections. Keys are stored server-side with zero frontend leakage.
+              <h2 className="text-2xl font-serif font-bold text-slate-900">Configure AI & SEO Data Providers</h2>
+              <p className="text-xs sm:text-sm text-slate-600">
+                Connect your Anthropic Claude, Google Gemini, Groq, OpenRouter, and SerpApi keys. Keys are stored server-side for accurate low-competition niche discovery.
               </p>
             </div>
           </div>
 
           {testResult && (
             <div
-              className={`p-4 rounded-2xl border text-xs flex items-center gap-2 ${
+              className={`p-4 rounded-2xl border-2 text-sm flex items-center gap-3 ${
                 testResult.success
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                  : 'bg-rose-50 border-rose-200 text-rose-800'
+                  ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-semibold'
+                  : 'bg-rose-50 border-rose-300 text-rose-900 font-semibold'
               }`}
             >
               {testResult.success ? (
-                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-emerald-600" />
               ) : (
-                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                <AlertTriangle className="w-5 h-5 flex-shrink-0 text-rose-600" />
               )}
-              <span className="font-semibold">{testResult.message}</span>
+              <span>{testResult.message}</span>
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Google Gemini */}
-            <div className="p-4 rounded-2xl bg-[#faf9f6] border border-slate-200 flex items-center justify-between shadow-xs">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-900 text-sm">Google Gemini AI</span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
-                    100% Free Tier
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500">Gemini 2.0 Flash / Pro (Google AI Studio)</p>
-              </div>
-              <button
-                onClick={() => handleTestProvider('gemini')}
-                disabled={testingProvider === 'gemini'}
-                className="px-4 py-2 rounded-full bg-white border border-slate-300 hover:border-purple-500 text-xs font-bold text-slate-700 hover:text-purple-700 flex items-center gap-1.5 transition shadow-xs disabled:opacity-50"
-              >
-                {testingProvider === 'gemini' ? <RefreshCw className="w-3.5 h-3.5 animate-spin text-purple-600" /> : <Zap className="w-3.5 h-3.5 text-purple-600" />}
-                <span>Test</span>
-              </button>
+          {keysSavedSuccess && (
+            <div className="p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-300 text-emerald-900 text-sm font-bold flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+              <span>API Configuration updated & active in live engine!</span>
             </div>
+          )}
 
-            {/* Groq Cloud */}
-            <div className="p-4 rounded-2xl bg-[#faf9f6] border border-slate-200 flex items-center justify-between shadow-xs">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-900 text-sm">Groq Cloud AI</span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                    100% Free & Fast
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500">Llama 3.3 70B / Mixtral (Fastest Inference)</p>
-              </div>
-              <button
-                onClick={() => handleTestProvider('groq')}
-                disabled={testingProvider === 'groq'}
-                className="px-4 py-2 rounded-full bg-white border border-slate-300 hover:border-purple-500 text-xs font-bold text-slate-700 hover:text-purple-700 flex items-center gap-1.5 transition shadow-xs disabled:opacity-50"
-              >
-                {testingProvider === 'groq' ? <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-600" /> : <Zap className="w-3.5 h-3.5 text-amber-600" />}
-                <span>Test</span>
-              </button>
+          {/* Primary AI Engine Selector */}
+          <div className="p-5 rounded-2xl bg-[#faf9f6] border-2 border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <span className="font-bold text-slate-900 text-sm block">Primary AI Discovery Engine</span>
+              <span className="text-xs text-slate-500">Choose which AI handles search intent gap analysis & monetization blueprints</span>
             </div>
-
-            {/* OpenRouter */}
-            <div className="p-4 rounded-2xl bg-[#faf9f6] border border-slate-200 flex items-center justify-between shadow-xs">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-900 text-sm">OpenRouter (Free Tier)</span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
-                    Free Hermes 3 & OpenChat
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500">Nous Hermes 3, Llama 3.3 Free, OpenChat</p>
-              </div>
-              <button
-                onClick={() => handleTestProvider('openrouter')}
-                disabled={testingProvider === 'openrouter'}
-                className="px-4 py-2 rounded-full bg-white border border-slate-300 hover:border-purple-500 text-xs font-bold text-slate-700 hover:text-purple-700 flex items-center gap-1.5 transition shadow-xs disabled:opacity-50"
-              >
-                {testingProvider === 'openrouter' ? <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-600" /> : <Zap className="w-3.5 h-3.5 text-indigo-600" />}
-                <span>Test</span>
-              </button>
-            </div>
-
-            {/* Local AI / Ollama / LM Studio */}
-            <div className="p-4 rounded-2xl bg-[#faf9f6] border border-slate-200 flex items-center justify-between shadow-xs">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-900 text-sm">Local AI (Ollama / LM Studio)</span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
-                    100% Offline & Private
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500">http://127.0.0.1:11434 (Hermes 3, Llama 3.2)</p>
-              </div>
-              <button
-                onClick={() => handleTestProvider('ollama')}
-                disabled={testingProvider === 'ollama'}
-                className="px-4 py-2 rounded-full bg-white border border-slate-300 hover:border-purple-500 text-xs font-bold text-slate-700 hover:text-purple-700 flex items-center gap-1.5 transition shadow-xs disabled:opacity-50"
-              >
-                {testingProvider === 'ollama' ? <RefreshCw className="w-3.5 h-3.5 animate-spin text-purple-600" /> : <Zap className="w-3.5 h-3.5 text-purple-600" />}
-                <span>Test</span>
-              </button>
-            </div>
-
-            {/* Anthropic Claude */}
-            <div className="p-4 rounded-2xl bg-[#faf9f6] border border-slate-200 flex items-center justify-between shadow-xs">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-900 text-sm">Anthropic Claude</span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                    Optional
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500">Claude 3.5 Sonnet / 3.7 Engine</p>
-              </div>
-              <button
-                onClick={() => handleTestProvider('claude')}
-                disabled={testingProvider === 'claude'}
-                className="px-4 py-2 rounded-full bg-white border border-slate-300 hover:border-purple-500 text-xs font-bold text-slate-700 hover:text-purple-700 flex items-center gap-1.5 transition shadow-xs disabled:opacity-50"
-              >
-                {testingProvider === 'claude' ? <RefreshCw className="w-3.5 h-3.5 animate-spin text-purple-600" /> : <Zap className="w-3.5 h-3.5 text-purple-600" />}
-                <span>Test</span>
-              </button>
-            </div>
-
-            {/* SerpApi */}
-            <div className="p-4 rounded-2xl bg-[#faf9f6] border border-slate-200 flex items-center justify-between shadow-xs">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-900 text-sm">SerpApi (Google SERP)</span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                    Live SERP
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500">Live search engine results & AI Overview extraction</p>
-              </div>
-              <button
-                onClick={() => handleTestProvider('serpapi')}
-                disabled={testingProvider === 'serpapi'}
-                className="px-4 py-2 rounded-full bg-white border border-slate-300 hover:border-purple-500 text-xs font-bold text-slate-700 hover:text-purple-700 flex items-center gap-1.5 transition shadow-xs disabled:opacity-50"
-              >
-                <Zap className="w-3.5 h-3.5 text-purple-600" />
-                <span>Test</span>
-              </button>
-            </div>
+            <select
+              value={defaultProvider}
+              onChange={(e) => setDefaultProvider(e.target.value)}
+              className="bg-white border-2 border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-purple-600 cursor-pointer shadow-xs"
+            >
+              <option value="auto">Auto Waterfall (Gemini / Groq / OpenRouter)</option>
+              <option value="claude">Anthropic Claude (claude-3-5-sonnet)</option>
+              <option value="gemini">Google Gemini (gemini-2.0-flash)</option>
+              <option value="groq">Groq Cloud (llama-3.3-70b)</option>
+              <option value="openrouter">OpenRouter (Multi-Model Consensus)</option>
+            </select>
           </div>
+
+          <form onSubmit={handleSaveApiKeys} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Anthropic Claude */}
+              <div className="p-5 rounded-2xl bg-[#faf9f6] border-2 border-slate-200 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900 text-sm">Anthropic Claude</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                      Elite Reasoning
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleTestProvider('claude')}
+                    disabled={testingProvider === 'claude'}
+                    className="px-3 py-1.5 rounded-full bg-white border border-slate-300 hover:border-purple-500 text-xs font-bold text-slate-700 hover:text-purple-700 flex items-center gap-1 transition shadow-xs disabled:opacity-50 cursor-pointer"
+                  >
+                    {testingProvider === 'claude' ? <RefreshCw className="w-3.5 h-3.5 animate-spin text-purple-600" /> : <Zap className="w-3.5 h-3.5 text-purple-600" />}
+                    <span>Test</span>
+                  </button>
+                </div>
+                <input
+                  type="password"
+                  value={apiKeys.anthropic}
+                  onChange={(e) => setApiKeys({ ...apiKeys, anthropic: e.target.value })}
+                  placeholder="sk-ant-api03-xxxx... (Anthropic Claude API Key)"
+                  className="w-full px-4 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-xs font-mono text-slate-900 focus:outline-none focus:border-purple-600 shadow-xs"
+                />
+              </div>
+
+              {/* Google Gemini */}
+              <div className="p-5 rounded-2xl bg-[#faf9f6] border-2 border-slate-200 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900 text-sm">Google Gemini AI</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                      Free Tier
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleTestProvider('gemini')}
+                    disabled={testingProvider === 'gemini'}
+                    className="px-3 py-1.5 rounded-full bg-white border border-slate-300 hover:border-purple-500 text-xs font-bold text-slate-700 hover:text-purple-700 flex items-center gap-1 transition shadow-xs disabled:opacity-50 cursor-pointer"
+                  >
+                    {testingProvider === 'gemini' ? <RefreshCw className="w-3.5 h-3.5 animate-spin text-purple-600" /> : <Zap className="w-3.5 h-3.5 text-purple-600" />}
+                    <span>Test</span>
+                  </button>
+                </div>
+                <input
+                  type="password"
+                  value={apiKeys.gemini}
+                  onChange={(e) => setApiKeys({ ...apiKeys, gemini: e.target.value })}
+                  placeholder="AIzaSy... (Google AI Studio Gemini Key)"
+                  className="w-full px-4 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-xs font-mono text-slate-900 focus:outline-none focus:border-purple-600 shadow-xs"
+                />
+              </div>
+
+              {/* Groq Cloud */}
+              <div className="p-5 rounded-2xl bg-[#faf9f6] border-2 border-slate-200 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900 text-sm">Groq Cloud AI</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                      Fastest
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleTestProvider('groq')}
+                    disabled={testingProvider === 'groq'}
+                    className="px-3 py-1.5 rounded-full bg-white border border-slate-300 hover:border-purple-500 text-xs font-bold text-slate-700 hover:text-purple-700 flex items-center gap-1 transition shadow-xs disabled:opacity-50 cursor-pointer"
+                  >
+                    {testingProvider === 'groq' ? <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-600" /> : <Zap className="w-3.5 h-3.5 text-amber-600" />}
+                    <span>Test</span>
+                  </button>
+                </div>
+                <input
+                  type="password"
+                  value={apiKeys.groq}
+                  onChange={(e) => setApiKeys({ ...apiKeys, groq: e.target.value })}
+                  placeholder="gsk_... (Groq Free Cloud API Key)"
+                  className="w-full px-4 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-xs font-mono text-slate-900 focus:outline-none focus:border-purple-600 shadow-xs"
+                />
+              </div>
+
+              {/* OpenRouter */}
+              <div className="p-5 rounded-2xl bg-[#faf9f6] border-2 border-slate-200 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900 text-sm">OpenRouter AI</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                      Open Source
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleTestProvider('openrouter')}
+                    disabled={testingProvider === 'openrouter'}
+                    className="px-3 py-1.5 rounded-full bg-white border border-slate-300 hover:border-purple-500 text-xs font-bold text-slate-700 hover:text-purple-700 flex items-center gap-1 transition shadow-xs disabled:opacity-50 cursor-pointer"
+                  >
+                    {testingProvider === 'openrouter' ? <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-600" /> : <Zap className="w-3.5 h-3.5 text-indigo-600" />}
+                    <span>Test</span>
+                  </button>
+                </div>
+                <input
+                  type="password"
+                  value={apiKeys.openrouter}
+                  onChange={(e) => setApiKeys({ ...apiKeys, openrouter: e.target.value })}
+                  placeholder="sk-or-... (OpenRouter API Key)"
+                  className="w-full px-4 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-xs font-mono text-slate-900 focus:outline-none focus:border-purple-600 shadow-xs"
+                />
+              </div>
+
+              {/* SerpApi */}
+              <div className="p-5 rounded-2xl bg-[#faf9f6] border-2 border-slate-200 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900 text-sm">SerpApi (Live Google Index)</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      Live SERP
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleTestProvider('serpapi')}
+                    disabled={testingProvider === 'serpapi'}
+                    className="px-3 py-1.5 rounded-full bg-white border border-slate-300 hover:border-purple-500 text-xs font-bold text-slate-700 hover:text-purple-700 flex items-center gap-1 transition shadow-xs disabled:opacity-50 cursor-pointer"
+                  >
+                    <Zap className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Test</span>
+                  </button>
+                </div>
+                <input
+                  type="password"
+                  value={apiKeys.serpapi}
+                  onChange={(e) => setApiKeys({ ...apiKeys, serpapi: e.target.value })}
+                  placeholder="SerpApi Private Key for live Google results"
+                  className="w-full px-4 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-xs font-mono text-slate-900 focus:outline-none focus:border-purple-600 shadow-xs"
+                />
+              </div>
+
+              {/* Moz / OpenPageRank */}
+              <div className="p-5 rounded-2xl bg-[#faf9f6] border-2 border-slate-200 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900 text-sm">Moz / OpenPageRank</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                      Authority (DA/DR)
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleTestProvider('moz')}
+                    disabled={testingProvider === 'moz'}
+                    className="px-3 py-1.5 rounded-full bg-white border border-slate-300 hover:border-purple-500 text-xs font-bold text-slate-700 hover:text-purple-700 flex items-center gap-1 transition shadow-xs disabled:opacity-50 cursor-pointer"
+                  >
+                    <Zap className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Test</span>
+                  </button>
+                </div>
+                <input
+                  type="password"
+                  value={apiKeys.moz}
+                  onChange={(e) => setApiKeys({ ...apiKeys, moz: e.target.value })}
+                  placeholder="Moz Access ID / API Key"
+                  className="w-full px-4 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-xs font-mono text-slate-900 focus:outline-none focus:border-purple-600 shadow-xs"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                disabled={savingKeys}
+                className="px-6 py-3 rounded-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-purple-600/20 transition active:scale-95 disabled:opacity-50 cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                <span>{savingKeys ? 'Saving API Keys...' : 'Save & Activate All API Keys'}</span>
+              </button>
+            </div>
+          </form>
         </section>
 
         {/* 2. Configurable SEBT-NEXT Scoring Weights */}

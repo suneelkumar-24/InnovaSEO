@@ -67,7 +67,14 @@ function CompareContent() {
 
   return (
     <div className="flex-1 flex flex-col bg-[#faf9f6] min-h-screen">
-      <Header title="Niche Comparison Matrix" subtitle="Head-to-head multi-signal viability comparison" />
+      <Header
+        title="Niche Comparison Matrix"
+        subtitle="Head-to-head multi-signal viability comparison"
+        breadcrumbs={[
+          { label: 'Home', href: '/dashboard' },
+          { label: 'Competitor & Gap Analysis', href: '/compare' },
+        ]}
+      />
 
       <main className="flex-1 p-6 sm:p-8 max-w-7xl mx-auto w-full space-y-8">
         {!idsParam || reports.length < 2 ? (

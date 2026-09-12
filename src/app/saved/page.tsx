@@ -137,6 +137,10 @@ export default function SavedVaultPage() {
       <Header
         title="Saved Niches Vault"
         subtitle="Continuous background score engine keeping your shortlisted niches dynamic & verified"
+        breadcrumbs={[
+          { label: 'Home', href: '/dashboard' },
+          { label: 'Saved Vault & Exports', href: '/saved' },
+        ]}
       >
         <div className="flex items-center gap-3">
           {selectedIds.length >= 2 && (

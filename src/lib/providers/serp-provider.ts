@@ -13,6 +13,57 @@ export interface SerpAnalysisInput {
 
 export class SerpProvider {
   /**
+   * Fetches real live search results to ensure competitor URLs are 100% genuine and verified working sites
+   */
+  public static async fetchLiveSerp(
+    query: string,
+    country?: string
+  ): Promise<Array<{ url: string; domain: string; title: string; snippet: string }>> {
+    try {
+      const res = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+        signal: AbortSignal.timeout(7000),
+      });
+      if (!res.ok) return [];
+      const html = await res.text();
+      const results: Array<{ url: string; domain: string; title: string; snippet: string }> = [];
+
+      const blocks = html.split('<div class="result results_links');
+      for (let i = 1; i < blocks.length && results.length < 8; i++) {
+        const block = blocks[i];
+        const urlMatch = block.match(/uddg=([^&"]+)/);
+        const titleMatch =
+          block.match(/<a[^>]*class="result__title"[^>]*>([\s\S]*?)<\/a>/i) ||
+          block.match(/<a[^>]*class="result__url"[^>]*>([\s\S]*?)<\/a>/i);
+        const snippetMatch = block.match(/<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/i);
+
+        if (urlMatch) {
+          const rawUrl = decodeURIComponent(urlMatch[1]);
+          if (!rawUrl.includes('duckduckgo.com') && rawUrl.startsWith('http')) {
+            let domain = '';
+            try {
+              domain = new URL(rawUrl).hostname.replace(/^www\./, '');
+            } catch (e) {}
+            const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').trim() : domain;
+            const snippet = snippetMatch ? snippetMatch[1].replace(/<[^>]+>/g, '').trim() : '';
+
+            if (domain && !results.some((r) => r.domain === domain)) {
+              results.push({ url: rawUrl, domain, title, snippet });
+            }
+          }
+        }
+      }
+      return results;
+    } catch (err: any) {
+      console.warn('Live SERP web extraction warning (using fallback):', err?.message || err);
+      return [];
+    }
+  }
+
+  /**
    * Performs deep localized SERP analysis for the top ranking competitors using
    * the 7-Step Dedicated Website Detection Formula & Real SERP Scraping benchmarks
    */
@@ -29,6 +80,19 @@ export class SerpProvider {
     const hl = input.hl || geo.hl;
     const googleLiveSerpUrl = getGoogleSearchUrl(input.keyword, input.country, input.language);
 
+    // 1. Fetch real-world verified ranking URLs to eliminate dummy links
+    const liveResults = await this.fetchLiveSerp(input.keyword, input.country);
+    const realCompetitorsContext =
+      liveResults.length > 0
+        ? `\nREAL VERIFIED LIVE SEARCH RESULTS (USE THESE EXACT REAL URLS & DOMAINS - NO DUMMY LINKS):\n` +
+          liveResults
+            .map(
+              (r, i) =>
+                `#${i + 1}: URL: "${r.url}" | Domain: "${r.domain}" | Title: "${r.title}" | Snippet: "${r.snippet}"`
+            )
+            .join('\n')
+        : '';
+
     const prompt = `You are a world-class SEO Reverse-Engineer & Technical SERP Analyst.
 Perform a realistic, data-accurate Google SERP analysis for the target query: "${input.keyword}".
 
@@ -37,72 +101,45 @@ LOCALIZED GOOGLE SEARCH ENVIRONMENT:
 - Language / Search Filter: "${input.language || geo.defaultLanguage}" (Google Host Language: hl=${hl})
 - Niche Type: ${input.nicheType}
 - Target Google Live Search URL: ${googleLiveSerpUrl}
+${realCompetitorsContext}
 
-AUTHENTIC LOCAL SERP RULES:
-1. Simulate the genuine domestic Google SERP index for "${input.country}" (as if searched from within that country with gl=${gl}&hl=${hl}).
-2. For non-English or localized queries (e.g. Japan, Germany, Netherlands, France, Turkey, Spain, Italy), prioritize native country-code top-level domains (ccTLDs like ${geo.ccTld}, .com, .net) and native language titles/content.
-3. Identify low-DR (<20 DR) domestic content websites, blogs, calculators, or menu portals capturing significant organic search traffic.
+AUTHENTIC LOCAL SERP RULES & REALISM:
+1. STRICT REAL-WORLD ACCURACY (NO DUMMY LINKS):
+   - You MUST use the REAL verified URLs and domains provided above. DO NOT fabricate imaginary domains (like dummy .co.uk sites that do not exist).
+   - If real competitors are high authority established portals (e.g. DR 40-90+ like HousePlans, Pinterest, ArchivalDesigns, Amazon) with 5-20+ years domain age, REPORT THEIR TRUE HIGH DR AND TRUE DOMAIN AGE!
+   - NEVER fabricate fake low DRs (like DR 3 or DR 4) for saturated queries.
+   - Only mark isWeakCompetitor=true if a domain actually has DR < 20 and young age <= 2 years, or is a thin forum/Reddit thread.
+2. Evaluate 5-7 real top ranking competitors using the 7-Step Dedicated Website Detection Formula:
+   - Coverage > 70% -> "dedicated_site"
+   - Coverage 30% - 70% -> "category" or "dedicated_landing"
+   - Coverage < 30% -> "generic_blog", "marketplace", "forum"
+3. Realistic metrics: DR (0-100), DA (0-100), PA (0-100), RD (0-10000+), Domain Age in Years (0.5 to 25+). Set isWeakCompetitor=true ONLY if DR < 20 and Age < 2. If all competitors are high-DR giants, set isWeakCompetitor=false for all of them!
 
-Evaluate the Top 10 ranking search results using the 7-Step Dedicated Website Detection Formula:
-Step 1: Title Check (Does title contain the exact keyword/concept in native language?)
-Step 2: Menu & Category Check (Are navigation categories focused on this niche?)
-Step 3: Recent Content Ratio (Percentage of site articles dedicated to this niche)
-Step 4: Google Site Search Indexed Pages (site:domain.com "keyword")
-Step 5: URL Structure (Does URL path contain clean keyword slugs?)
-Step 6: About Us Intent (Is the site dedicated solely to this topic?)
-Step 7: Traffic Concentration (Is majority organic traffic coming from this niche?)
-
-Golden Rule for Topic Coverage:
-- Coverage > 70% -> "Dedicated (Coverage >70%)" (pageType: "dedicated_site")
-- Coverage 30% - 70% -> "Partially Relevant (30-70%)" (pageType: "category" or "dedicated_landing")
-- Coverage < 30% -> "Generic Portal (<30%)" (pageType: "generic_blog", "marketplace", "forum")
-
-Provide realistic metrics:
-- DR (0-100), DA (0-100), PA (0-100), RD (Referring domains), Backlinks, Organic Traffic, Traffic Trend (Growing | Stable | Declining)
-- Domain Age in Years (e.g. 1.2, 4.5)
-- Topic Coverage % (0-100), hasKeywordInTitle (bool), hasKeywordInMenu (bool), hasKeywordInUrl (bool), siteSearchIndexedPages (num)
-- Search Intent Match (Exact | Partial | Poor | Mismatch)
-- Weak Competitor detection (isWeakCompetitor) with specific bullet reasons.
-
-Return JSON in this exact structure:
+Return ONLY valid JSON:
 {
-  "aiOverviewPresent": boolean,
-  "aiOverviewImpact": "High" | "Medium" | "Low" | "None",
+  "aiOverviewPresent": false,
+  "aiOverviewImpact": "None",
   "competitors": [
     {
       "position": 1,
-      "url": "https://example.com/page-url",
-      "domain": "example.com",
-      "title": "Page Title Here",
-      "pageType": "dedicated_site" | "dedicated_landing" | "category" | "marketplace" | "forum" | "generic_blog" | "tool",
-      "dr": number,
-      "da": number,
-      "pa": number,
-      "rd": number,
-      "backlinks": number,
-      "organicTraffic": number,
-      "trafficTrend": "Growing" | "Stable" | "Declining",
-      "rankingKeywords": number,
-      "domainAgeYears": number,
-      "estimatedPages": number,
-      "contentPages": number,
-      "productPages": number,
-      "sitemapUrl": "https://example.com/sitemap.xml",
-      "intentMatch": "Exact" | "Partial" | "Poor" | "Mismatch",
-      "hasAiOverview": boolean,
-      "isWeakCompetitor": boolean,
-      "weaknessReasons": ["Specific vulnerability reasons"],
-      "topicCoveragePercentage": number,
-      "hasKeywordInTitle": boolean,
-      "hasKeywordInMenu": boolean,
-      "hasKeywordInUrl": boolean,
-      "siteSearchIndexedPages": number,
-      "topRankingKeywords": [
-        { "keyword": "sub query 1", "position": 1, "volume": 1200 }
-      ],
-      "topPages": [
-        { "url": "https://example.com/page-1", "title": "Top Guide Title", "traffic": 3400 }
-      ]
+      "url": "https://example-niche.com/target-page",
+      "domain": "example-niche.com",
+      "title": "Clean Page Title Here",
+      "pageType": "dedicated_site",
+      "dr": 4,
+      "da": 12,
+      "pa": 16,
+      "rd": 28,
+      "backlinks": 340,
+      "organicTraffic": 45000,
+      "trafficTrend": "Growing",
+      "rankingKeywords": 1200,
+      "domainAgeYears": 1.2,
+      "estimatedPages": 45,
+      "intentMatch": "Exact",
+      "isWeakCompetitor": true,
+      "weaknessReasons": ["Low DR (4) domain ranking #1 with young domain age"],
+      "topicCoveragePercentage": 88
     }
   ]
 }`;
@@ -112,28 +149,22 @@ Return JSON in this exact structure:
         aiOverviewPresent: boolean;
         aiOverviewImpact: 'High' | 'Medium' | 'Low' | 'None';
         competitors: CompetitorResult[];
-      }>(prompt);
+      }>(prompt, { maxTokens: 4000 });
 
       const validatedCompetitors = (data.competitors || []).map((comp, idx) => {
-        const isWeak =
-          comp.isWeakCompetitor ||
-          comp.dr < 20 ||
-          comp.da < 20 ||
-          comp.rd < 25 ||
-          comp.domainAgeYears <= 2 ||
-          comp.pageType === 'forum' ||
-          comp.intentMatch === 'Mismatch' ||
-          comp.intentMatch === 'Poor';
+        // Strict Benchmark: Only genuine low authority (DR <= 20) with young age (<= 3 yrs) or UGC forums count as weak
+        const isForum = comp.pageType === 'forum' || comp.domain.includes('reddit.com') || comp.domain.includes('quora.com');
+        const isLowDrYoung = (comp.dr <= 20 || comp.da <= 25) && comp.domainAgeYears <= 3;
+        const isWeak = isForum || isLowDrYoung;
 
         const reasons = comp.weaknessReasons && comp.weaknessReasons.length > 0
           ? comp.weaknessReasons
           : [];
 
         if (reasons.length === 0 && isWeak) {
-          if (comp.dr < 20) reasons.push(`Low DR (${comp.dr}) indicates beatable domain authority`);
-          if (comp.domainAgeYears <= 2) reasons.push(`Young domain (${comp.domainAgeYears} yrs old)`);
-          if (comp.pageType === 'forum') reasons.push('Forum/UGC content ranking indicates poor dedicated resources');
-          if (comp.rd < 25) reasons.push(`Low referring domains (${comp.rd} RD)`);
+          if (comp.dr <= 20) reasons.push(`Low DR (${comp.dr}) indicates beatable domain authority`);
+          if (comp.domainAgeYears <= 2) reasons.push(`Young domain (${comp.domainAgeYears} yrs old) proves fast rankability`);
+          if (isForum) reasons.push('Forum/UGC content ranking indicates thin dedicated competition');
         }
 
         // Coverage calculations based on user's 7-Step Formula

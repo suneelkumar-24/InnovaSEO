@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import Sidebar from '@/components/Sidebar';
+import DualSidebar from '@/components/DualSidebar';
 import { LivePulseProvider } from '@/components/LivePulseProvider';
 
 export const metadata: Metadata = {
@@ -15,10 +15,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-[#faf9f6] text-slate-800 antialiased flex min-h-screen selection:bg-purple-500 selection:text-white font-sans">
+      <body className="bg-[#faf9f6] text-slate-800 antialiased flex min-h-screen selection:bg-purple-500 selection:text-white font-sans overflow-x-hidden">
         <LivePulseProvider>
-          {/* Persistent Desktop Sidebar */}
-          <Sidebar />
+          {/* SEMrush-Style Enterprise Dual Sidebar (Primary Rail + Contextual Sub-Sidebar) */}
+          <DualSidebar />
 
           {/* Main Content Viewport */}
           <div className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-[#faf9f6]">
@@ -29,4 +29,3 @@ export default function RootLayout({
     </html>
   );
 }
-

@@ -76,6 +76,8 @@ export class ResearchPipeline {
       businessModel,
       minSv: input.minSv,
       maxKd: input.maxKd,
+      gl,
+      hl,
     });
 
     // --- PHASE 3: Total Demand & Regional Geo ---
@@ -108,65 +110,77 @@ export class ResearchPipeline {
       hl,
     });
 
-    // Generate Multi-Country Localized Expansions across Tier 1 & Tier 2 Markets
-    const targetExpansionCountries = [
-      'Germany',
-      'Japan',
-      'United States',
-      'Netherlands',
-      'United Kingdom',
-      'France',
-      'Turkey',
-      'Spain',
-      'Brazil',
-      'Indonesia',
-    ].filter((c) => c.toLowerCase() !== targetCountry.toLowerCase());
+    // Generate Multi-Country Localized Expansions dynamically across Tier 1 & Tier 2 Markets
+    let multiCountryExpansions: MultiCountryExpansionSeed[] = [];
+    try {
+      const expansionPrompt = `You are a Global SEO & Multi-Country Localization Specialist.
+Given the seed topic: "${seedKeyword}" (Target Country: "${targetCountry}", Archetype: "${nicheType}").
+Generate 6-8 localized, high-opportunity seed keywords translated into native domestic languages for Tier-1 and Tier-2 countries (such as Germany, Japan, France, Netherlands, Spain, Brazil, Turkey, Italy, United Kingdom, Canada).
 
-    const multiCountryExpansions: MultiCountryExpansionSeed[] = targetExpansionCountries.slice(0, 8).map((ctry) => {
-      const geo = getCountryGeoConfig(ctry);
-      let localizedSeed = seedKeyword;
-      let meaning = seedKeyword;
+For each country, return:
+- country: Name of the country
+- language: Native language
+- seedKeyword: The exact localized query in native script (e.g. for "coffee prices" in Germany -> "Kaffeepreise", in Japan -> "コーヒー 価格", in France -> "prix du café")
+- englishMeaning: Brief English meaning
+- estimatedMonthlySv: Realistic local search volume (number)
+- rationale: 1 brief sentence explaining the low DR ranking opportunity in that domestic SERP
 
-      const lower = seedKeyword.toLowerCase();
-      if (lower.includes('starbucks') || lower.includes('menu') || lower.includes('price') || lower.includes('preise') || lower.includes('prijzen')) {
-        if (ctry === 'Germany') { localizedSeed = 'Starbucks Preise'; meaning = 'Starbucks prices'; }
-        else if (ctry === 'Japan') { localizedSeed = 'スタバ メニュー'; meaning = 'Starbucks menu'; }
-        else if (ctry === 'Netherlands') { localizedSeed = 'Starbucks prijzen'; meaning = 'Starbucks prices'; }
-        else if (ctry === 'Turkey') { localizedSeed = 'Starbucks fiyatları'; meaning = 'Starbucks prices'; }
-        else if (ctry === 'France') { localizedSeed = 'prix Starbucks'; meaning = 'Starbucks prices'; }
-        else if (ctry === 'Spain') { localizedSeed = 'precios Starbucks'; meaning = 'Starbucks prices'; }
-        else if (ctry === 'Brazil') { localizedSeed = 'preços Starbucks'; meaning = 'Starbucks prices'; }
-        else if (ctry === 'Indonesia') { localizedSeed = 'harga menu Starbucks'; meaning = 'Starbucks menu prices'; }
-        else if (ctry === 'United States') { localizedSeed = 'Starbucks Menu With Prices'; meaning = 'Starbucks menu with prices'; }
-      } else if (lower.includes('tesla') && (lower.includes('rim') || lower.includes('size') || lower.includes('wheel'))) {
-        if (ctry === 'Germany') { localizedSeed = 'Tesla Felgengröße'; meaning = 'Tesla rim size'; }
-        else if (ctry === 'Japan') { localizedSeed = 'テスラ ホイール サイズ'; meaning = 'Tesla wheel dimensions'; }
-        else if (ctry === 'France') { localizedSeed = 'dimensions jantes Tesla'; meaning = 'Tesla rim dimensions'; }
-        else if (ctry === 'Netherlands') { localizedSeed = 'Tesla velgmaat specificaties'; meaning = 'Tesla rim specs'; }
-        else { localizedSeed = `${seedKeyword} ${ctry}`; meaning = `${seedKeyword} specifications in ${ctry}`; }
-      } else {
-        localizedSeed = `${seedKeyword}`;
-        meaning = `${seedKeyword} (${geo.defaultLanguage})`;
+Return ONLY a JSON array:
+[
+  {
+    "country": "Germany",
+    "language": "German",
+    "seedKeyword": "string",
+    "englishMeaning": "string",
+    "estimatedMonthlySv": 3500,
+    "rationale": "string"
+  }
+]`;
+      const rawExp = await AiProvider.generateJson<any[]>(expansionPrompt);
+      if (Array.isArray(rawExp) && rawExp.length > 0) {
+        multiCountryExpansions = rawExp.slice(0, 8).map((item) => {
+          const geo = getCountryGeoConfig(item.country || 'Germany');
+          return {
+            country: item.country || geo.countryName,
+            language: item.language || geo.defaultLanguage,
+            gl: geo.gl,
+            hl: geo.hl,
+            flag: geo.flag,
+            seedKeyword: item.seedKeyword || seedKeyword,
+            englishMeaning: item.englishMeaning || seedKeyword,
+            estimatedMonthlySv: Number(item.estimatedMonthlySv) || Math.round((keywordData.seedSv || 2000) * 0.8),
+            estimatedRpm: `$${geo.rpmRange[0]} - $${geo.rpmRange[1]}`,
+            tier: geo.tier,
+            googleLiveSerpUrl: getGoogleSearchUrl(item.seedKeyword || seedKeyword, item.country || geo.countryName, item.language || geo.defaultLanguage),
+            rationale: item.rationale || `Low-competition domestic ${geo.countryName} SERP with high ${geo.tier} display ad RPM.`,
+          };
+        });
       }
+    } catch (expErr) {
+      console.warn('Dynamic multi-country expansion notice:', expErr);
+    }
 
-      const mult = geo.tier.includes('Tier 1') ? 1.0 : 1.3;
-      const vol = Math.round((keywordData.seedSv || 2400) * (ctry === 'United States' ? 2.2 : ctry === 'Germany' ? 1.2 : 0.8) * mult);
-
-      return {
-        country: ctry,
-        language: geo.defaultLanguage,
-        gl: geo.gl,
-        hl: geo.hl,
-        flag: geo.flag,
-        seedKeyword: localizedSeed,
-        englishMeaning: meaning,
-        estimatedMonthlySv: vol,
-        estimatedRpm: `$${geo.rpmRange[0]} - $${geo.rpmRange[1]}`,
-        tier: geo.tier,
-        googleLiveSerpUrl: getGoogleSearchUrl(localizedSeed, ctry, geo.defaultLanguage),
-        rationale: `Low-competition domestic ${geo.defaultLanguage} SERP with high ${geo.tier} display ad RPM.`,
-      };
-    });
+    if (multiCountryExpansions.length === 0) {
+      const fallbackCountries = ['Germany', 'Japan', 'United Kingdom', 'Canada', 'France', 'Netherlands', 'Spain', 'Australia']
+        .filter((c) => c.toLowerCase() !== targetCountry.toLowerCase());
+      multiCountryExpansions = fallbackCountries.slice(0, 6).map((ctry) => {
+        const geo = getCountryGeoConfig(ctry);
+        return {
+          country: ctry,
+          language: geo.defaultLanguage,
+          gl: geo.gl,
+          hl: geo.hl,
+          flag: geo.flag,
+          seedKeyword: `${seedKeyword} ${ctry}`,
+          englishMeaning: `${seedKeyword} in ${ctry}`,
+          estimatedMonthlySv: Math.round((keywordData.seedSv || 2400) * 0.75),
+          estimatedRpm: `$${geo.rpmRange[0]} - $${geo.rpmRange[1]}`,
+          tier: geo.tier,
+          googleLiveSerpUrl: getGoogleSearchUrl(`${seedKeyword} ${ctry}`, ctry, geo.defaultLanguage),
+          rationale: `Untapped domestic ${geo.countryName} market with high ${geo.tier} RPM potential.`,
+        };
+      });
+    }
 
     // --- PHASE 6: Competitor Analysis & Weak Competitor Detection ---
     notify(6, 'Auditing Competitor Authority & Weak Spots', 55);
@@ -478,6 +492,7 @@ export class ResearchPipeline {
       keyReasons: scoringResult.keyReasons,
       mainRisks: scoringResult.mainRisks,
       whatToValidateNext: scoringResult.whatToValidateNext,
+      adaptiveIntelligenceInsights: scoringResult.adaptiveIntelligenceInsights,
       dataConfidenceScore,
 
       searchVolume: {
@@ -555,6 +570,14 @@ export class ResearchPipeline {
       scalability,
       riskAnalysis,
       scoreBreakdown: scoringResult.scoreBreakdown,
+      iSkillsAudit: ScoringEngine.evaluateISkillsCriteria({
+        nicheCategory: ScoringEngine.mapNicheTypeToISkillsCategory(nicheType, businessModel),
+        targetCountry,
+        searchVolume: keywordData.seedSv,
+        competitors: enrichedCompetitors,
+        kd: keywordData.items[0]?.kd || 18,
+      }),
+      fastMoverOpportunity: ScoringEngine.detectFastMoverOpportunity(enrichedCompetitors),
     };
 
     return report;

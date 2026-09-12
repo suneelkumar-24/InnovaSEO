@@ -1,25 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AiProvider } from '@/lib/providers/ai-provider';
-import { MASTER_PATTERN_VAULT } from '@/lib/engine/pattern-vault';
 import { getCountryGeoConfig } from '@/lib/geo';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { bucketId, modifierId, customSeed, targetCountry = 'United States', language = 'English' } = body;
+    const {
+      seed,
+      modifier,
+      customSeed,
+      targetCountry = 'United States',
+      language = 'English',
+      archetype,
+      industry,
+    } = body;
 
     const geoConfig = getCountryGeoConfig(targetCountry);
+    const activeSeed = (seed || customSeed || modifier || '').trim();
 
-    // Find bucket & modifier metadata
-    const bucket = MASTER_PATTERN_VAULT.find((b) => b.id === bucketId) || MASTER_PATTERN_VAULT[0];
-    const modifier = bucket.modifiers.find((m) => m.id === modifierId) || bucket.modifiers[0];
-    const activeSeed = customSeed?.trim() || modifier.exampleSeed;
+    if (!activeSeed) {
+      return NextResponse.json(
+        { success: false, error: 'Seed keyword or query is required' },
+        { status: 400 }
+      );
+    }
 
     const minRpm = geoConfig.rpmRange[0];
     const maxRpm = geoConfig.rpmRange[1];
 
-    const prompt = `You are the ultimate Ahrefs & Autonomous Micro-Niche SERP Anomaly Engine following Sir M Tanveer Nandla's 12-point methodology.
-You are analyzing the pattern modifier "${modifier.name}" (Seed: "${activeSeed}") for target country "${targetCountry}" (Language: "${language}", Tier: ${geoConfig.tier}, Base RPM: $${minRpm}-$${maxRpm}).
+    const prompt = `You are the ultimate Ahrefs & Autonomous Micro-Niche SERP Anomaly Engine following the master 12-point micro-niche evaluation methodology.
+You are analyzing the query: "${activeSeed}" ${industry ? `(Industry: ${industry})` : ''} for target country "${targetCountry}" (Language: "${language}", Tier: ${geoConfig.tier}, Base RPM: $${minRpm}-$${maxRpm}).
+Archetype: "${archetype || 'Micro Niche / Programmatic / Tool'}".
 
 Simulate an exact Ahrefs Keywords Explorer & SERP Vulnerability scan with these MANDATORY FILTERS:
 1. "Lowest DR: Up to 20 in Top 10" (At least 2+ websites with DR < 20 ranking on Page 1)
@@ -30,7 +41,7 @@ Return a strictly valid JSON response with this exact structure:
   "seed": "${activeSeed}",
   "country": "${targetCountry}",
   "tier": "${geoConfig.tier}",
-  "bucketTitle": "${bucket.title}",
+  "category": "${archetype || 'Micro-Niche / SERP Anomaly'}",
   "totalKeywordsFound": number (e.g. 14 to 31873),
   "searchVolume": number (monthly search volume for primary term),
   "trafficPotential": number (total traffic potential in country),

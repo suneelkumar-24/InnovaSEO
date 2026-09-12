@@ -287,6 +287,124 @@ export interface ScoringWeights {
   aiOverviewCtr: number;       // default 5
 }
 
+export type ISkillsNicheCategory = 'Info' | 'APK' | 'Affiliate' | 'Ecom / Services' | 'Tool' | 'SAAS';
+
+export interface ISkillsCriteriaRule {
+  nicheType: ISkillsNicheCategory;
+  volumeTier1: number;
+  volumeRestOfWorld: number;
+  volumeLabel: string;
+  maxDA: number;
+  maxKD: number;
+  maxDR: number;
+  maxPages: number;
+  notes: string;
+}
+
+export const ISKILLS_CRITERIA_MATRIX: ISkillsCriteriaRule[] = [
+  {
+    nicheType: 'Info',
+    volumeTier1: 15000,
+    volumeRestOfWorld: 30000,
+    volumeLabel: '15,000 (Tier 1) / 30,000 (Pakistan / Rest of World)',
+    maxDA: 25,
+    maxKD: 25,
+    maxDR: 20,
+    maxPages: 150,
+    notes: 'Pakistan and emerging markets must be 30,000+. Tier 1 markets (US, UK, CA, AU, DE) require 15,000+.',
+  },
+  {
+    nicheType: 'APK',
+    volumeTier1: 30000,
+    volumeRestOfWorld: 30000,
+    volumeLabel: '30,000 minimum',
+    maxDA: 25,
+    maxKD: 25,
+    maxDR: 20,
+    maxPages: 150,
+    notes: '30,000 minimum monthly search volume across all countries. Site pages < 150 if low DA.',
+  },
+  {
+    nicheType: 'Affiliate',
+    volumeTier1: 500,
+    volumeRestOfWorld: 500,
+    volumeLabel: '500 minimum (Commercial seed)',
+    maxDA: 25,
+    maxKD: 25,
+    maxDR: 20,
+    maxPages: 150,
+    notes: 'Commercial intent seeds require minimum 500 monthly search volume.',
+  },
+  {
+    nicheType: 'Ecom / Services',
+    volumeTier1: 500,
+    volumeRestOfWorld: 500,
+    volumeLabel: '500 minimum (Commercial seed)',
+    maxDA: 25,
+    maxKD: 25,
+    maxDR: 20,
+    maxPages: 150,
+    notes: 'Transactional and service buyer intent requires minimum 500 search volume.',
+  },
+  {
+    nicheType: 'Tool',
+    volumeTier1: 15000,
+    volumeRestOfWorld: 30000,
+    volumeLabel: '15,000 (Tier 1) / 30,000 (Rest of World)',
+    maxDA: 25,
+    maxKD: 25,
+    maxDR: 20,
+    maxPages: 150,
+    notes: 'Zero AI Overview risk with interactive calculators & utility engines.',
+  },
+  {
+    nicheType: 'SAAS',
+    volumeTier1: 5000,
+    volumeRestOfWorld: 5000,
+    volumeLabel: '5,000 minimum',
+    maxDA: 25,
+    maxKD: 25,
+    maxDR: 20,
+    maxPages: 100,
+    notes: 'Software solutions need minimum 5,000 volume. Competitors must have ≤ 100 pages.',
+  },
+];
+
+export interface ISkillsCheckDetail {
+  passed: boolean;
+  actual: number | string;
+  target: number | string;
+  status: 'passed' | 'warning' | 'failed';
+  label: string;
+}
+
+export interface ISkillsAuditResult {
+  category: ISkillsNicheCategory;
+  rule: ISkillsCriteriaRule;
+  passedAll: boolean;
+  scorePercentage: number;
+  checks: {
+    volume: ISkillsCheckDetail;
+    da: ISkillsCheckDetail;
+    kd: ISkillsCheckDetail;
+    dr: ISkillsCheckDetail;
+    sitePages: ISkillsCheckDetail;
+  };
+  summary: string;
+}
+
+export interface FastMoverCloneOpportunity {
+  competitorDomain: string;
+  dr: number;
+  da: number;
+  domainAgeYears: number;
+  monthlyTraffic: number;
+  isFastMoverWinner: boolean;
+  topicalCompressionRatio: string;
+  timeframeDays: number;
+  executionStrategy: string;
+}
+
 export interface NicheViabilityReport {
   id: string;
   seedKeyword: string;
@@ -304,6 +422,7 @@ export interface NicheViabilityReport {
   keyReasons: string[];
   mainRisks: string[];
   whatToValidateNext: string[];
+  adaptiveIntelligenceInsights?: string[];
   dataConfidenceScore: number; // 0-100
 
   // 1. Demand & Search Volume
@@ -426,6 +545,12 @@ export interface NicheViabilityReport {
     scalabilityScore: number;
     aiOverviewCtrScore: number;
   };
+
+  // 12. Official iSkills Criteria Audit
+  iSkillsAudit?: ISkillsAuditResult;
+
+  // 13. Fast-Mover Clone Formula
+  fastMoverOpportunity?: FastMoverCloneOpportunity;
 }
 
 export interface User {
@@ -512,7 +637,8 @@ export type AutopilotSector =
   | 'micro_calculators'
   | 'nano_affiliate'
   | 'marketplace_templates'
-  | 'high_rpm_info';
+  | 'high_rpm_info'
+  | 'fast_mover_viral_seeds';
 
 export interface AutopilotConfig {
   enabled: boolean;
@@ -561,4 +687,44 @@ export interface AutopilotStatus {
   recentDiscoveries: AutopilotDiscoveredItem[];
   liveLogs: Array<{ id: string; timestamp: string; message: string; level: 'info' | 'success' | 'warn' }>;
 }
+
+export type SearchOrigin = 'manual' | 'auto_hunter' | 'marketplace_reverse' | 'anomaly_scanner';
+
+export interface ResearchDeductions {
+  summary: string;
+  weakCompetitorsFound: number;
+  lowestCompetitorDr: number;
+  zeroClickImmune: boolean;
+  aiOverviewActive: boolean;
+  countryTier: string;
+  estimatedRpm: string;
+  recommendedAsset: string;
+  estimatedMonthlyRevenue: string;
+  topKeyReasons: string[];
+  keyRisks: string[];
+  expansionCount?: number;
+}
+
+export interface ResearchRecord {
+  id: string;
+  userId: string;
+  seedKeyword: string;
+  nicheType: string;
+  businessModel: string;
+  targetCountry: string;
+  language: string;
+  status: 'queued' | 'running' | 'completed' | 'failed';
+  progress: number;
+  currentPhase: number;
+  viabilityScore: number;
+  verdict: string;
+  dataConfidence: number;
+  searchOrigin?: SearchOrigin;
+  executedBy?: string;
+  deductions?: ResearchDeductions;
+  report?: NicheViabilityReport;
+  createdAt: string;
+  updatedAt: string;
+}
+
 

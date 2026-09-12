@@ -25,11 +25,13 @@ export async function POST(req: NextRequest) {
       const batchSize = Number(body.batchSize) || 3;
       const sector = body.sector || undefined;
       const tier = body.tier || undefined;
+      const forceAiDiscovery = Boolean(body.forceAiDiscovery);
 
       const result = await AutopilotEngine.runAutonomousBatch({
         batchSize,
         sector,
         tier,
+        forceAiDiscovery,
       });
 
       const updatedStatus = AutopilotEngine.getStatus();

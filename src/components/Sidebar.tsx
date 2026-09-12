@@ -17,6 +17,7 @@ import {
   Sparkles,
   Store,
   Radio,
+  History,
 } from 'lucide-react';
 import { useLivePulse } from './LivePulseProvider';
 
@@ -35,6 +36,7 @@ export default function Sidebar() {
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Hunter Studio', href: '/research/new', icon: Target },
     { label: 'Autopilot Radar', href: '/autopilot', icon: Radio },
+    { label: 'Search History', href: '/history', icon: History },
     { label: 'Saved Vault', href: '/saved', icon: Bookmark },
     { label: 'Compare Niches', href: '/compare', icon: GitCompare },
     { label: 'Settings & APIs', href: '/settings', icon: Settings },

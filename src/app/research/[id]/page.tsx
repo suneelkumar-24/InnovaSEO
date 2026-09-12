@@ -35,17 +35,28 @@ import {
   Sliders,
   ExternalLink,
   ChevronRight,
-  TrendingUp,
+  ArrowLeft,
+  ArrowRight,
+  Zap,
+  Sparkles,
+  Calendar,
+  FileSpreadsheet,
 } from 'lucide-react';
+import Link from 'next/link';
 
 export default function ResearchWorkspacePage() {
   const router = useRouter();
   const routeParams = useParams();
-  const id = typeof routeParams?.id === 'string' ? routeParams.id : Array.isArray(routeParams?.id) ? routeParams.id[0] : '';
+  const id =
+    typeof routeParams?.id === 'string'
+      ? routeParams.id
+      : Array.isArray(routeParams?.id)
+      ? routeParams.id[0]
+      : '';
 
   const [report, setReport] = useState<NicheViabilityReport | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [activeStage, setActiveStage] = useState<'overview' | 'competitors' | 'checklist' | 'execution' | 'technical'>('overview');
   const [exportOpen, setExportOpen] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -127,27 +138,51 @@ export default function ResearchWorkspacePage() {
     }
   };
 
-  const tabs = [
-    { id: 'overview', label: 'Executive Overview', icon: Compass },
-    { id: 'demand', label: 'Search Demand & Geo', icon: Globe },
-    { id: 'trends', label: 'Google Trends & Seasonality', icon: Activity },
-    { id: 'keywords', label: 'Keyword Cluster Matrix', icon: Layers },
-    { id: 'serp', label: 'SERP & Weak Competitors', icon: ShieldCheck },
-    { id: 'intent', label: 'Search Intent Gap', icon: Sliders },
-    { id: 'landing', label: 'Dedicated Page Audit', icon: FileText },
-    { id: 'ai_overview', label: 'AI Overview & CTR', icon: RefreshCw },
-    { id: 'monetization', label: 'Monetization Blueprint', icon: DollarSign },
-    { id: 'scalability', label: 'Topical Silos & Scale', icon: Layers },
-    { id: 'risk', label: 'Policy & YMYL Risk', icon: AlertTriangle },
-    { id: 'data_sources', label: 'Data Transparency', icon: Database },
+  const STAGES = [
+    {
+      id: 'overview' as const,
+      step: '1',
+      title: 'Executive Verdict',
+      subtitle: 'Instant Decision & Score',
+      icon: Compass,
+    },
+    {
+      id: 'competitors' as const,
+      step: '2',
+      title: 'Competitors & SERP',
+      subtitle: 'Weak DR & Traffic Targets',
+      icon: ShieldCheck,
+    },
+    {
+      id: 'checklist' as const,
+      step: '3',
+      title: '12-Point Audit Matrix',
+      subtitle: 'Official Benchmark Checks',
+      icon: CheckCircle2,
+    },
+    {
+      id: 'execution' as const,
+      step: '4',
+      title: '90-Day Content Plan',
+      subtitle: 'Keywords & Daily Cadence',
+      icon: Zap,
+    },
+    {
+      id: 'technical' as const,
+      step: '5',
+      title: 'Deep Metrics',
+      subtitle: 'Trends & Data Scores',
+      icon: Activity,
+    },
   ];
 
   if (loading) {
     return (
-      <div className="flex-1 flex flex-col bg-[#faf9f6] min-h-screen">
+      <div className="flex-1 flex flex-col bg-[#faf9f6] min-h-screen font-sans">
         <Header title="Research Workspace" />
-        <div className="flex-1 flex items-center justify-center p-12 text-slate-500 text-sm font-medium">
-          Loading Intelligence Dossier...
+        <div className="flex-1 flex flex-col items-center justify-center p-12 text-slate-500 text-sm font-medium space-y-3">
+          <div className="w-8 h-8 rounded-full border-2 border-purple-600 border-t-transparent animate-spin" />
+          <span>Organizing Niche Intelligence Dossier...</span>
         </div>
       </div>
     );
@@ -155,7 +190,7 @@ export default function ResearchWorkspacePage() {
 
   if (!report) {
     return (
-      <div className="flex-1 flex flex-col bg-[#faf9f6] min-h-screen">
+      <div className="flex-1 flex flex-col bg-[#faf9f6] min-h-screen font-sans">
         <Header title="Research Workspace" />
         <div className="flex-1 flex flex-col items-center justify-center p-12 space-y-4 text-center">
           <p className="text-base font-bold text-slate-900">Research Dossier Not Found</p>
@@ -171,10 +206,28 @@ export default function ResearchWorkspacePage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#faf9f6] min-h-screen">
-      {/* Workspace Header Actions */}
-      <Header title={report.nicheName} subtitle={`Seed: "${report.seedKeyword}" • ${report.targetCountry}`}>
+    <div className="flex-1 flex flex-col bg-[#faf9f6] min-h-screen font-sans">
+      {/* Workspace Header Actions with Breadcrumbs */}
+      <Header
+        title={report.nicheName}
+        subtitle={`Seed: "${report.seedKeyword}" • Target Market: ${report.targetCountry}`}
+        breadcrumbs={[
+          { label: 'Home', href: '/dashboard' },
+          { label: 'Autopilot Radar', href: '/autopilot' },
+          { label: 'Hunter Studio', href: '/research/new' },
+          { label: report.nicheName },
+        ]}
+      >
         <div className="flex items-center gap-2">
+          {/* Back to Discovery Navigation */}
+          <Link
+            href="/autopilot"
+            className="px-3.5 py-1.5 rounded-full bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:text-purple-700 hover:bg-slate-50 flex items-center gap-1.5 transition"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-slate-400" />
+            <span>Radar</span>
+          </Link>
+
           <button
             onClick={handleToggleSave}
             className={`px-3.5 py-1.5 rounded-full border text-xs font-semibold flex items-center gap-1.5 transition ${
@@ -184,7 +237,7 @@ export default function ResearchWorkspacePage() {
             }`}
           >
             <Bookmark className="w-3.5 h-3.5" />
-            <span>{isSaved ? 'Saved' : 'Save Niche'}</span>
+            <span>{isSaved ? 'Saved' : 'Save'}</span>
           </button>
 
           <button
@@ -198,10 +251,10 @@ export default function ResearchWorkspacePage() {
 
           <button
             onClick={() => setExportOpen(true)}
-            className="px-3.5 py-1.5 rounded-full bg-purple-50 border border-purple-200 text-xs font-bold text-purple-700 hover:bg-purple-100 flex items-center gap-1.5 transition"
+            className="px-3.5 py-1.5 rounded-full bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 flex items-center gap-1.5 transition shadow-sm"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Export</span>
+            <span>1-Click Export</span>
           </button>
 
           <button
@@ -214,229 +267,431 @@ export default function ResearchWorkspacePage() {
         </div>
       </Header>
 
-      <main className="flex-1 p-6 sm:p-8 max-w-7xl mx-auto w-full space-y-8">
-        {/* 1. SEBT-NEXT Executive Opportunity Card */}
-        <OpportunityCard report={report} />
-
-        {/* 2. 12 Interactive Analysis Tabs */}
-        <div className="space-y-6">
-          {/* Scrollable Tab Navigation */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-200 scrollbar-none">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
+      <main className="flex-1 p-6 sm:p-8 max-w-7xl mx-auto w-full space-y-6">
+        {/* Guided 4-Stage Progressive Stepper Navigation */}
+        <div className="bg-white border border-slate-200/90 rounded-3xl p-2 sm:p-3 shadow-xs">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+            {STAGES.map((stage) => {
+              const Icon = stage.icon;
+              const isActive = activeStage === stage.id;
               return (
                 <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition ${
+                  key={stage.id}
+                  onClick={() => setActiveStage(stage.id)}
+                  className={`flex items-center gap-3 p-3 rounded-2xl text-left transition-all ${
                     isActive
                       ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
-                      : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      : 'bg-[#faf9f6] text-slate-600 hover:bg-purple-50/60 hover:text-purple-900 border border-slate-100'
                   }`}
                 >
-                  <Icon className="w-3.5 h-3.5" />
-                  <span>{tab.label}</span>
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-purple-100 text-purple-700'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span
+                      className={`text-[10px] font-bold uppercase tracking-wider block ${
+                        isActive ? 'text-purple-200' : 'text-slate-400'
+                      }`}
+                    >
+                      Step {stage.step}
+                    </span>
+                    <span className="text-xs font-bold truncate block mt-0.5">
+                      {stage.title}
+                    </span>
+                  </div>
                 </button>
               );
             })}
           </div>
+        </div>
 
-          {/* Tab 1: Executive Overview */}
-          {activeTab === 'overview' && (
+        {/* ============================================================ */}
+        {/* STAGE 1: EXECUTIVE VERDICT & INSTANT DECISION */}
+        {/* ============================================================ */}
+        {activeStage === 'overview' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Opportunity Card Container */}
+            <OpportunityCard report={report} />
+
+            {/* Next Stage Guided Action Card */}
+            <div className="bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 border border-purple-200 rounded-3xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="space-y-1 text-center sm:text-left">
+                <span className="text-[10px] uppercase font-bold text-purple-700 tracking-wider">
+                  Next Step in Evaluation
+                </span>
+                <h4 className="text-sm font-bold text-slate-900">
+                  Ready to inspect the live competitors and find the exact low-DR site to replicate?
+                </h4>
+              </div>
+              <button
+                onClick={() => setActiveStage('competitors')}
+                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition shrink-0"
+              >
+                <span>Step 2: Inspect Competitors &amp; SERP</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* STAGE 2: COMPETITORS & SERP AUDIT */}
+        {/* ============================================================ */}
+        {activeStage === 'competitors' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            {/* SERP Competitor Table */}
+            <CompetitorTable
+              competitors={report.serp?.competitors || []}
+              medians={
+                report.serp?.medians || {
+                  dr: { min: 0, median: 0, max: 0 },
+                  da: { min: 0, median: 0, max: 0 },
+                  pa: { min: 0, median: 0, max: 0 },
+                  rd: { min: 0, median: 0, max: 0 },
+                  backlinks: { min: 0, median: 0, max: 0 },
+                  traffic: { min: 0, median: 0, max: 0 },
+                  domainAgeYears: { min: 0, median: 0, max: 0 },
+                  pages: { min: 0, median: 0, max: 0 },
+                  rankingKeywords: { min: 0, median: 0, max: 0 },
+                }
+              }
+              targetCountry={report.targetCountry || 'United States'}
+              seedKeyword={report.seedKeyword}
+              gl={report.serp?.gl}
+              hl={report.serp?.hl}
+              googleLiveSerpUrl={report.serp?.googleLiveSerpUrl}
+              aiOverviewPresent={report.serp?.aiOverviewPresent ?? false}
+            />
+
+            {/* Dedicated Website & Search Intent Gaps Summary Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 space-y-5 shadow-sm">
-                <h3 className="text-lg font-serif font-bold text-slate-900 flex items-center gap-2">
-                  <Compass className="w-5 h-5 text-purple-600" /> Market Persona & Strategic Fit
-                </h3>
-                <div className="space-y-3 text-xs sm:text-sm text-slate-700 leading-relaxed divide-y divide-slate-100">
-                  <p className="pt-2">
-                    <strong className="text-slate-900">Niche Archetype:</strong>{' '}
-                    <span className="text-purple-700 font-bold uppercase">{report.nicheType || 'Micro Niche'}</span>
-                  </p>
-                  <p className="pt-2">
-                    <strong className="text-slate-900">Primary Business Model:</strong>{' '}
-                    <span className="text-slate-800 font-semibold uppercase">{report.businessModel || 'Affiliate'}</span>
-                  </p>
-                  <p className="pt-2">
-                    <strong className="text-slate-900">Target Country:</strong>{' '}
-                    <span className="font-semibold text-slate-800">{report.targetCountry || 'Global'}</span>{' '}
-                    ({report.searchVolume?.countrySharePercentage ?? 35}% country share)
-                  </p>
-                  <p className="pt-2">
-                    <strong className="text-slate-900">Verdict Rationale:</strong>{' '}
-                    <span className="text-slate-600">{report.verdictRationale || 'Analysis verified against SEO heuristics.'}</span>
-                  </p>
+              {/* Dedicated Website Audit Box */}
+              <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-7 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <h4 className="text-base font-serif font-bold text-slate-900 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-purple-600" /> Dedicated Site vs Generic Portals
+                  </h4>
+                  <span className="px-3 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] font-bold uppercase">
+                    {report.dedicatedPageAudit?.opportunityLevel || 'HIGH OPPORTUNITY'}
+                  </span>
                 </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-[#faf9f6] p-3 rounded-2xl border border-slate-200">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Dedicated Site</span>
+                    <span className={`text-sm font-bold mt-0.5 block ${report.dedicatedPageAudit?.dedicatedWebsiteExists ? 'text-amber-600' : 'text-emerald-600'}`}>
+                      {report.dedicatedPageAudit?.dedicatedWebsiteExists ? 'YES' : 'NO (Open)'}
+                    </span>
+                  </div>
+                  <div className="bg-[#faf9f6] p-3 rounded-2xl border border-slate-200">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Dedicated Landing</span>
+                    <span className={`text-sm font-bold mt-0.5 block ${report.dedicatedPageAudit?.dedicatedLandingPageExists ? 'text-amber-600' : 'text-emerald-600'}`}>
+                      {report.dedicatedPageAudit?.dedicatedLandingPageExists ? 'YES' : 'NO (Open)'}
+                    </span>
+                  </div>
+                  <div className="bg-[#faf9f6] p-3 rounded-2xl border border-slate-200">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Exact Intent Page</span>
+                    <span className={`text-sm font-bold mt-0.5 block ${report.dedicatedPageAudit?.exactIntentPageExists ? 'text-slate-800' : 'text-emerald-600'}`}>
+                      {report.dedicatedPageAudit?.exactIntentPageExists ? 'YES' : 'NO (Open)'}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  {report.dedicatedPageAudit?.analysis || 'No dedicated exact-match resource currently dominates the top search results.'}
+                </p>
               </div>
 
-              <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 space-y-5 shadow-sm">
-                <h3 className="text-lg font-serif font-bold text-slate-900 flex items-center gap-2">
-                  <Sliders className="w-5 h-5 text-purple-600" /> SEBT-NEXT Score Breakdown
-                </h3>
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="bg-[#faf9f6] p-4 rounded-2xl border border-slate-200">
-                    <span className="text-slate-500 block text-[10px] uppercase font-bold">Demand (15%)</span>
-                    <span className="text-base font-black text-purple-700 mt-1 block">{report.scoreBreakdown?.demandScore ?? 85}/100</span>
-                  </div>
-                  <div className="bg-[#faf9f6] p-4 rounded-2xl border border-slate-200">
-                    <span className="text-slate-500 block text-[10px] uppercase font-bold">SERP Weakness (15%)</span>
-                    <span className="text-base font-black text-emerald-600 mt-1 block">{report.scoreBreakdown?.serpWeaknessScore ?? 80}/100</span>
-                  </div>
-                  <div className="bg-[#faf9f6] p-4 rounded-2xl border border-slate-200">
-                    <span className="text-slate-500 block text-[10px] uppercase font-bold">Competition DR (10%)</span>
-                    <span className="text-base font-black text-indigo-700 mt-1 block">{report.scoreBreakdown?.competitionScore ?? 85}/100</span>
-                  </div>
-                  <div className="bg-[#faf9f6] p-4 rounded-2xl border border-slate-200">
-                    <span className="text-slate-500 block text-[10px] uppercase font-bold">Intent Gap (10%)</span>
-                    <span className="text-base font-black text-teal-700 mt-1 block">{report.scoreBreakdown?.intentOpportunityScore ?? 75}/100</span>
-                  </div>
-                  <div className="bg-[#faf9f6] p-4 rounded-2xl border border-slate-200">
-                    <span className="text-slate-500 block text-[10px] uppercase font-bold">Dedicated Page (10%)</span>
-                    <span className="text-base font-black text-emerald-600 mt-1 block">{report.scoreBreakdown?.dedicatedPageScore ?? 85}/100</span>
-                  </div>
-                  <div className="bg-[#faf9f6] p-4 rounded-2xl border border-slate-200">
-                    <span className="text-slate-500 block text-[10px] uppercase font-bold">Monetization (10%)</span>
-                    <span className="text-base font-black text-amber-700 mt-1 block">{report.scoreBreakdown?.monetizationScore ?? 80}/100</span>
-                  </div>
+              {/* Search Intent Gaps & UGC Ranking Box */}
+              <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-7 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <h4 className="text-base font-serif font-bold text-slate-900 flex items-center gap-2">
+                    <Sliders className="w-4 h-4 text-purple-600" /> Search Intent &amp; UGC Gaps
+                  </h4>
+                  <span className="px-3 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase">
+                    {report.intentAnalysis?.primaryIntent || 'INFORMATIONAL'}
+                  </span>
+                </div>
+
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  {report.intentAnalysis?.mismatchExplanation || 'Search intent is clearly defined with high commercial & informational demand.'}
+                </p>
+
+                <div className="space-y-2 pt-1">
+                  {(report.intentAnalysis?.gapOpportunities || []).slice(0, 3).map((gap, i) => (
+                    <div key={i} className="p-2.5 rounded-xl bg-[#faf9f6] border border-slate-200 text-xs text-slate-800 flex items-start gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                      <span className="font-medium">{gap}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
-          )}
 
-          {/* Tab 2: Search Demand & Geography */}
-          {activeTab === 'demand' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="bg-white border border-slate-200 rounded-3xl p-5 text-center shadow-sm">
-                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Seed Keyword SV</span>
-                  <span className="text-2xl font-serif font-bold text-purple-700 mt-1 block">
-                    {(report.searchVolume?.seedSv?.value ?? 0).toLocaleString()}
-                  </span>
-                  <span className="text-[10px] text-slate-400">Source: {report.searchVolume?.seedSv?.source || 'Search Index'}</span>
-                </div>
-                <div className="bg-white border border-slate-200 rounded-3xl p-5 text-center shadow-sm">
-                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Global Search Demand</span>
-                  <span className="text-2xl font-serif font-bold text-slate-900 mt-1 block">
-                    {(report.searchVolume?.globalSv?.value ?? 0).toLocaleString()}
-                  </span>
-                  <span className="text-[10px] text-slate-400">Worldwide monthly</span>
-                </div>
-                <div className="bg-white border border-slate-200 rounded-3xl p-5 text-center shadow-sm">
-                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Total Niche Demand</span>
-                  <span className="text-2xl font-serif font-bold text-indigo-700 mt-1 block">
-                    {(report.searchVolume?.totalNicheSv?.value ?? 0).toLocaleString()}
-                  </span>
-                  <span className="text-[10px] text-slate-400">Topical cluster total</span>
-                </div>
-                <div className="bg-white border border-slate-200 rounded-3xl p-5 text-center shadow-sm">
-                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Country Share</span>
-                  <span className="text-2xl font-serif font-bold text-slate-900 mt-1 block">
-                    {report.searchVolume?.countrySharePercentage ?? 35}%
-                  </span>
-                  <span className="text-[10px] text-slate-400">{report.targetCountry || 'Global'}</span>
-                </div>
+            {/* Back / Next Navigation Deck */}
+            <div className="flex items-center justify-between pt-2">
+              <button
+                onClick={() => setActiveStage('overview')}
+                className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-bold flex items-center gap-1.5 transition"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Verdict</span>
+              </button>
+
+              <button
+                onClick={() => setActiveStage('checklist')}
+                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-2 shadow-md transition"
+              >
+                <span>Step 3: 12-Point Audit Matrix</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* STAGE 3: 12-POINT MASTER AUDIT MATRIX */}
+        {/* ============================================================ */}
+        {activeStage === 'checklist' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Geographic Demand & Country Share */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="bg-white border border-slate-200 rounded-3xl p-5 text-center shadow-sm">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Seed Keyword SV</span>
+                <span className="text-2xl font-serif font-bold text-purple-700 mt-1 block">
+                  {(report.searchVolume?.seedSv?.value ?? 0).toLocaleString()}
+                </span>
+                <span className="text-[10px] text-slate-400">{report.targetCountry || 'Target Country'}</span>
               </div>
+              <div className="bg-white border border-slate-200 rounded-3xl p-5 text-center shadow-sm">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Global Search Demand</span>
+                <span className="text-2xl font-serif font-bold text-slate-900 mt-1 block">
+                  {(report.searchVolume?.globalSv?.value ?? 0).toLocaleString()}
+                </span>
+                <span className="text-[10px] text-slate-400">Worldwide monthly</span>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-3xl p-5 text-center shadow-sm">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Beatable Sites in Top 10</span>
+                <span className="text-2xl font-serif font-bold text-emerald-600 mt-1 block">
+                  {report.serp?.weakCompetitorCount ?? 2} Sites
+                </span>
+                <span className="text-[10px] text-emerald-700 font-semibold">DR &lt; 20 on Page 1</span>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-3xl p-5 text-center shadow-sm">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Country Share</span>
+                <span className="text-2xl font-serif font-bold text-indigo-700 mt-1 block">
+                  {report.searchVolume?.countrySharePercentage ?? 35}%
+                </span>
+                <span className="text-[10px] text-slate-400">Local dominance</span>
+              </div>
+            </div>
 
-              {/* Top Countries Table */}
-              <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-4 shadow-sm">
-                <h4 className="text-base font-serif font-bold text-slate-900 flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-purple-600" /> Geographic Demand Distribution
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {(report.searchVolume?.topCountries || []).map((c, i) => (
-                    <div key={i} className="flex items-center justify-between p-3.5 rounded-2xl bg-[#faf9f6] border border-slate-200 text-xs">
-                      <span className="font-bold text-slate-900">{c.country}</span>
-                      <div className="flex items-center gap-3">
-                        <span className="text-purple-700 font-bold">{(c.volume ?? 0).toLocaleString()} SV</span>
-                        <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] font-bold">{c.share}%</span>
+            {/* Multi-Country Geo Expansions */}
+            {report.multiCountryExpansions && report.multiCountryExpansions.length > 0 && (
+              <div className="bg-white border-2 border-indigo-200 rounded-3xl p-6 sm:p-8 space-y-4 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-indigo-600 tracking-wider block">
+                      GEO LOCALIZATION MATRIX
+                    </span>
+                    <h4 className="text-lg font-serif font-bold text-slate-900 flex items-center gap-2 mt-0.5">
+                      <Globe className="w-5 h-5 text-indigo-600" /> Multi-Country Localized Seeds &amp; Sister Opportunities
+                    </h4>
+                  </div>
+                  <span className="text-xs font-semibold text-slate-500">
+                    Target identical search intent across foreign Tier-1 &amp; Tier-2 SERPs
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
+                  {report.multiCountryExpansions.map((exp, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-[#faf9f6] border border-slate-200 hover:border-indigo-400 p-4 rounded-2xl transition space-y-3 shadow-xs group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{exp.flag}</span>
+                          <span className="font-bold text-slate-900 text-sm">{exp.country}</span>
+                          <span className="text-[10px] font-mono bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full font-bold">
+                            gl={exp.gl} · hl={exp.hl}
+                          </span>
+                        </div>
+                        <span className="text-xs font-bold text-purple-700">{exp.estimatedRpm} RPM</span>
+                      </div>
+
+                      <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1">
+                        <span className="font-mono font-bold text-slate-900 text-xs block group-hover:text-indigo-600 transition">
+                          {exp.seedKeyword}
+                        </span>
+                        <span className="text-[11px] text-slate-500 block">
+                          Meaning: {exp.englishMeaning}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1">
+                        <span className="text-xs font-bold text-emerald-600">
+                          ~{exp.estimatedMonthlySv.toLocaleString()} SV/mo
+                        </span>
+
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={exp.googleLiveSerpUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-indigo-600 text-xs font-semibold flex items-center gap-1 transition"
+                          >
+                            <span>Google ({exp.gl.toUpperCase()})</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+
+                          <button
+                            onClick={() => {
+                              router.push(
+                                `/research/new?seed=${encodeURIComponent(exp.seedKeyword)}&country=${encodeURIComponent(
+                                  exp.country
+                                )}`
+                              );
+                            }}
+                            className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs"
+                          >
+                            Research
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
+            )}
 
-              {/* Multi-Country Localized Tier 1 & Tier 2 Expansions (ChatGPT Shortlist) */}
-              {report.multiCountryExpansions && report.multiCountryExpansions.length > 0 && (
-                <div className="bg-white border-2 border-indigo-200 rounded-3xl p-6 sm:p-8 space-y-4 shadow-sm">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-indigo-600 tracking-wider block">
-                        GEO LOCALIZATION MATRIX
-                      </span>
-                      <h4 className="text-lg font-serif font-bold text-slate-900 flex items-center gap-2 mt-0.5">
-                        <Globe className="w-5 h-5 text-indigo-600" /> Multi-Country Localized Seeds & Sister Opportunities
-                      </h4>
-                    </div>
-                    <span className="text-xs font-semibold text-slate-500">
-                      Target identical search intent across foreign Tier-1 & Tier-2 SERPs
-                    </span>
-                  </div>
+            {/* Back / Next Navigation Deck */}
+            <div className="flex items-center justify-between pt-2">
+              <button
+                onClick={() => setActiveStage('competitors')}
+                className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-bold flex items-center gap-1.5 transition"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Competitors</span>
+              </button>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
-                    {report.multiCountryExpansions.map((exp, idx) => (
-                      <div
-                        key={idx}
-                        className="bg-[#faf9f6] border border-slate-200 hover:border-indigo-400 p-4 rounded-2xl transition space-y-3 shadow-xs group"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl">{exp.flag}</span>
-                            <span className="font-bold text-slate-900 text-sm">{exp.country}</span>
-                            <span className="text-[10px] font-mono bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full font-bold">
-                              gl={exp.gl} · hl={exp.hl}
-                            </span>
-                          </div>
-                          <span className="text-xs font-bold text-purple-700">
-                            {exp.estimatedRpm} RPM
-                          </span>
-                        </div>
-
-                        <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1">
-                          <span className="font-mono font-bold text-slate-900 text-xs block group-hover:text-indigo-600 transition">
-                            {exp.seedKeyword}
-                          </span>
-                          <span className="text-[11px] text-slate-500 block">
-                            Meaning: {exp.englishMeaning}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center justify-between pt-1">
-                          <span className="text-xs font-bold text-emerald-600">
-                            ~{exp.estimatedMonthlySv.toLocaleString()} SV/mo
-                          </span>
-
-                          <div className="flex items-center gap-2">
-                            <a
-                              href={exp.googleLiveSerpUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-indigo-600 text-xs font-semibold flex items-center gap-1 transition"
-                            >
-                              <span>Google ({exp.gl.toUpperCase()})</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-
-                            <button
-                              onClick={() => {
-                                router.push(`/research/new?seed=${encodeURIComponent(exp.seedKeyword)}&country=${encodeURIComponent(exp.country)}`);
-                              }}
-                              className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs"
-                            >
-                              Research
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <button
+                onClick={() => setActiveStage('execution')}
+                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-2 shadow-md transition"
+              >
+                <span>Step 4: 90-Day Content Plan</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Tab 3: Google Trends & Seasonality */}
-          {activeTab === 'trends' && (
+        {/* ============================================================ */}
+        {/* STAGE 4: 90-DAY CONTENT ROADMAP & KEYWORDS */}
+        {/* ============================================================ */}
+        {activeStage === 'execution' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Quick Action Banner */}
+            <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 space-y-4 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-purple-600 tracking-wider block">
+                    CONTENT EXECUTION PLAYBOOK
+                  </span>
+                  <h3 className="text-xl font-serif font-bold text-slate-900 mt-0.5">
+                    90-Day Competitor Keyword Mapping &amp; Daily Scheduler
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Replicate all ranking keywords of the low-DR competitor at a pace of 1 to 2 high-quality articles per day.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setExportOpen(true)}
+                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download Excel Sheet (.xlsx)</span>
+                  </button>
+                  <Link
+                    href={`/blueprints?tab=scheduler`}
+                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold flex items-center gap-1.5 transition"
+                  >
+                    <span>Full Blueprints Studio</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              </div>
+
+              {/* Keywords Table Container */}
+              <KeywordsTable
+                items={report.keywords?.items || []}
+                clusters={report.keywords?.clusters || []}
+              />
+            </div>
+
+            {/* Monetization Angles & Exit Valuation */}
+            <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <h4 className="text-base font-serif font-bold text-slate-900 flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-purple-600" /> Monetization Strategy &amp; Asset Exit
+                </h4>
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+                  Est. {report.monetization?.estimatedMonthlyRevenueRange || '$1,500 - $6,000 / mo'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {(report.monetization?.opportunities || []).map((opp, i) => (
+                  <div key={i} className="p-4 rounded-2xl bg-[#faf9f6] border border-slate-200 space-y-2 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-purple-700 uppercase tracking-wider">{opp.label}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600 font-semibold">
+                        {opp.easeOfExecution}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">{opp.description}</p>
+                    <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-xs">
+                      <span className="text-slate-500">Income Potential:</span>
+                      <span className="font-bold text-slate-900">{opp.potentialIncomeRange}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Back Navigation Deck */}
+            <div className="flex items-center justify-between pt-2">
+              <button
+                onClick={() => setActiveStage('checklist')}
+                className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-bold flex items-center gap-1.5 transition"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to 12-Point Checklist</span>
+              </button>
+
+              <button
+                onClick={() => setExportOpen(true)}
+                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-2 shadow-md transition"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Export Complete Dossier</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* STAGE 5: DEEP TECHNICAL METRICS (TRENDS, RISK, DATA) */}
+        {/* ============================================================ */}
+        {activeStage === 'technical' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Google Trends Interactive Chart */}
             <TrendChart
               points12m={report.trends?.points12m || []}
               currentInterest={report.trends?.currentInterest ?? 65}
@@ -449,343 +704,66 @@ export default function ResearchWorkspacePage() {
               risingQueries={report.trends?.risingQueries || []}
               topRegions={report.searchVolume?.topRegions || []}
             />
-          )}
 
-          {/* Tab 4: Keyword Matrix */}
-          {activeTab === 'keywords' && (
-            <KeywordsTable
-              items={report.keywords?.items || []}
-              clusters={report.keywords?.clusters || []}
-            />
-          )}
-
-          {/* Tab 5: SERP & Weak Competitors */}
-          {activeTab === 'serp' && (
-            <CompetitorTable
-              competitors={report.serp?.competitors || []}
-              medians={report.serp?.medians || {
-                dr: { min: 0, median: 0, max: 0 },
-                da: { min: 0, median: 0, max: 0 },
-                pa: { min: 0, median: 0, max: 0 },
-                rd: { min: 0, median: 0, max: 0 },
-                backlinks: { min: 0, median: 0, max: 0 },
-                traffic: { min: 0, median: 0, max: 0 },
-                domainAgeYears: { min: 0, median: 0, max: 0 },
-                pages: { min: 0, median: 0, max: 0 },
-                rankingKeywords: { min: 0, median: 0, max: 0 },
-              }}
-              targetCountry={report.targetCountry || 'United States'}
-              seedKeyword={report.seedKeyword}
-              gl={report.serp?.gl}
-              hl={report.serp?.hl}
-              googleLiveSerpUrl={report.serp?.googleLiveSerpUrl}
-              aiOverviewPresent={report.serp?.aiOverviewPresent ?? false}
-            />
-          )}
-
-          {/* Tab 6: Search Intent Gap */}
-          {activeTab === 'intent' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white border border-slate-200 rounded-3xl p-5 text-center shadow-sm">
-                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Primary Intent</span>
-                  <span className="text-lg font-serif font-bold text-purple-700 mt-1 uppercase block">
-                    {report.intentAnalysis?.primaryIntent || 'Commercial'}
-                  </span>
-                </div>
-                <div className="bg-white border border-slate-200 rounded-3xl p-5 text-center shadow-sm">
-                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Intent Mismatch</span>
-                  <span className={`text-lg font-bold mt-1 uppercase block ${report.intentAnalysis?.intentMismatchDetected ? 'text-emerald-600' : 'text-slate-700'}`}>
-                    {report.intentAnalysis?.intentMismatchDetected ? 'YES (High Opportunity)' : 'NO (Aligned)'}
-                  </span>
-                </div>
-                <div className="bg-white border border-slate-200 rounded-3xl p-5 text-center shadow-sm">
-                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Forums / UGC Ranking</span>
-                  <span className="text-lg font-bold text-indigo-700 mt-1 block">
-                    {report.intentAnalysis?.forumsRankingCount ?? 0} Pages
-                  </span>
-                </div>
-              </div>
-
-              <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-4 shadow-sm">
+            {/* Policy & Risk Classification */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-5 shadow-sm">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <h4 className="text-base font-serif font-bold text-slate-900 flex items-center gap-2">
-                  <Sliders className="w-4 h-4 text-purple-600" /> SERP Content Gap Opportunities
+                  <AlertTriangle className="w-4 h-4 text-purple-600" /> Policy &amp; YMYL Risk Audit
                 </h4>
-                <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-                  {report.intentAnalysis?.mismatchExplanation || 'Search intent is well defined for this query.'}
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  {(report.intentAnalysis?.gapOpportunities || []).map((gap, i) => (
-                    <div key={i} className="p-3.5 rounded-2xl bg-[#faf9f6] border border-slate-200 text-xs text-slate-800 flex items-start gap-2.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-                      <span className="font-medium">{gap}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Tab 7: Dedicated Page Audit */}
-          {activeTab === 'landing' && (
-            <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-                <div>
-                  <h4 className="text-lg font-serif font-bold text-slate-900 flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-purple-600" />
-                    Dedicated Website / Exact Intent Page Check
-                  </h4>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Checks whether an exact-match dedicated resource or landing page exists.
-                  </p>
-                </div>
-                <span className="px-3.5 py-1 rounded-full bg-purple-100 text-purple-800 border border-purple-200 text-xs font-bold uppercase self-start sm:self-auto">
-                  Opportunity: {report.dedicatedPageAudit?.opportunityLevel || 'HIGH'}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-[#faf9f6] p-4 rounded-2xl border border-slate-200 text-center">
-                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Dedicated Website</span>
-                  <span className={`text-base font-bold mt-1 block ${report.dedicatedPageAudit?.dedicatedWebsiteExists ? 'text-amber-600' : 'text-emerald-600'}`}>
-                    {report.dedicatedPageAudit?.dedicatedWebsiteExists ? 'YES' : 'NO'}
-                  </span>
-                </div>
-                <div className="bg-[#faf9f6] p-4 rounded-2xl border border-slate-200 text-center">
-                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Dedicated Landing Page</span>
-                  <span className={`text-base font-bold mt-1 block ${report.dedicatedPageAudit?.dedicatedLandingPageExists ? 'text-amber-600' : 'text-emerald-600'}`}>
-                    {report.dedicatedPageAudit?.dedicatedLandingPageExists ? 'YES' : 'NO'}
-                  </span>
-                </div>
-                <div className="bg-[#faf9f6] p-4 rounded-2xl border border-slate-200 text-center">
-                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Exact Intent Match Page</span>
-                  <span className={`text-base font-bold mt-1 block ${report.dedicatedPageAudit?.exactIntentPageExists ? 'text-slate-800' : 'text-emerald-600'}`}>
-                    {report.dedicatedPageAudit?.exactIntentPageExists ? 'YES' : 'NO'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-[#faf9f6] border border-slate-200 text-xs sm:text-sm text-slate-700 leading-relaxed">
-                {report.dedicatedPageAudit?.analysis || 'No dedicated exact-match resource currently dominates the query.'}
-              </div>
-            </div>
-          )}
-
-          {/* Tab 8: AI Overview & CTR */}
-          {activeTab === 'ai_overview' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-4 shadow-sm">
-                <h4 className="text-lg font-serif font-bold text-slate-900 flex items-center gap-2">
-                  <RefreshCw className="w-5 h-5 text-purple-600" /> AI Overview Presence
-                </h4>
-                <div className="grid grid-cols-2 gap-3 text-center">
-                  <div className="bg-[#faf9f6] p-4 rounded-2xl border border-slate-200">
-                    <span className="text-[10px] uppercase font-bold text-slate-500 block">AI Overview Triggered</span>
-                    <span className={`text-base font-bold mt-1 block ${report.serp?.aiOverviewPresent ? 'text-amber-600' : 'text-emerald-600'}`}>
-                      {report.serp?.aiOverviewPresent ? 'YES' : 'NO'}
-                    </span>
-                  </div>
-                  <div className="bg-[#faf9f6] p-4 rounded-2xl border border-slate-200">
-                    <span className="text-[10px] uppercase font-bold text-slate-500 block">Traffic Impact</span>
-                    <span className="text-base font-bold text-slate-900 mt-1 block">{report.serp?.aiOverviewImpact || 'None'}</span>
-                  </div>
-                </div>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {report.serp?.aiOverviewPresent
-                    ? 'AI Overview triggers for informational components. Focus content on proprietary reviews and interactive tools to retain click-throughs.'
-                    : 'Clean SERP without AI Overview compression. Excellent organic click preservation.'}
-                </p>
-              </div>
-
-              <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-4 shadow-sm">
-                <h4 className="text-lg font-serif font-bold text-slate-900 flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-purple-600" /> CTR & Traffic Modeling
-                </h4>
-                <div className="grid grid-cols-2 gap-3 text-center">
-                  <div className="bg-[#faf9f6] p-4 rounded-2xl border border-slate-200">
-                    <span className="text-[10px] uppercase font-bold text-slate-500 block">Top 3 Est. CTR</span>
-                    <span className="text-2xl font-serif font-bold text-purple-700 mt-1 block">
-                      {Math.round((report.ctrAnalysis?.estimatedTop3Ctr ?? 0.58) * 100)}%
-                    </span>
-                  </div>
-                  <div className="bg-[#faf9f6] p-4 rounded-2xl border border-slate-200">
-                    <span className="text-[10px] uppercase font-bold text-slate-500 block">Monthly Clicks Capture</span>
-                    <span className="text-2xl font-serif font-bold text-slate-900 mt-1 block">
-                      {(report.ctrAnalysis?.potentialClicksMonthly ?? 1200).toLocaleString()} Clicks
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Tab 9: Monetization Blueprint */}
-          {activeTab === 'monetization' && (
-            <div className="space-y-6">
-              <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-5 shadow-sm">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-                  <h4 className="text-lg font-serif font-bold text-slate-900 flex items-center gap-2">
-                    <DollarSign className="w-5 h-5 text-purple-600" /> Revenue & Monetization Strategy
-                  </h4>
-                  <span className="text-xs font-bold text-purple-800 bg-purple-50 px-3.5 py-1.5 rounded-full border border-purple-200">
-                    Est. {report.monetization?.estimatedMonthlyRevenueRange || '$1,500 - $6,000 / mo'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {(report.monetization?.opportunities || []).map((opp, i) => (
-                    <div key={i} className="p-5 rounded-3xl bg-[#faf9f6] border border-slate-200 space-y-3 shadow-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-purple-700 uppercase tracking-wider">{opp.label}</span>
-                        <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600 font-semibold">{opp.easeOfExecution}</span>
-                      </div>
-                      <p className="text-xs text-slate-700 leading-relaxed">{opp.description}</p>
-                      <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-xs">
-                        <span className="text-slate-500">Potential Income:</span>
-                        <span className="font-bold text-slate-900">{opp.potentialIncomeRange}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Tab 10: Scalability & Silos */}
-          {activeTab === 'scalability' && (
-            <div className="space-y-6">
-              {/* Sub-Niches */}
-              <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-4 shadow-sm">
-                <h4 className="text-lg font-serif font-bold text-slate-900 flex items-center gap-2">
-                  <Layers className="w-5 h-5 text-purple-600" /> Sub-Niches Expansion Angles
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {(report.scalability?.subNiches || []).map((sub, i) => (
-                    <div key={i} className="p-5 rounded-3xl bg-[#faf9f6] border border-slate-200 space-y-2 shadow-xs">
-                      <div className="flex items-center justify-between">
-                        <h5 className="text-xs font-bold text-purple-800 truncate">{sub.name}</h5>
-                        <span className="text-[10px] font-semibold text-slate-500">{sub.estimatedVolume}</span>
-                      </div>
-                      <p className="text-xs text-slate-600 leading-relaxed">{sub.rationale}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Content Silos Roadmap */}
-              <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-4 shadow-sm">
-                <h4 className="text-lg font-serif font-bold text-slate-900 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-purple-600" /> 20+ Article Topical Silos Blueprint
-                </h4>
-                <div className="space-y-4">
-                  {(report.scalability?.silos || []).map((silo, idx) => (
-                    <div key={idx} className="p-5 rounded-3xl bg-[#faf9f6] border border-slate-200 space-y-3 shadow-xs">
-                      <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider">{silo.siloName}</h5>
-                      <div className="divide-y divide-slate-200">
-                        {(silo.articleAngles || []).map((art, aIdx) => (
-                          <div key={aIdx} className="py-2.5 flex items-center justify-between text-xs">
-                            <span className="text-slate-800 font-medium">{art.title}</span>
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] bg-purple-50 text-purple-700 border border-purple-200 font-bold uppercase">
-                              {art.type}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Tab 11: Policy & Risk */}
-          {activeTab === 'risk' && (
-            <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-                <h4 className="text-lg font-serif font-bold text-slate-900 flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-purple-600" /> AI/LLM Policy & YMYL Risk Audit
-                </h4>
-                <span className={`px-3.5 py-1 rounded-full text-xs font-bold uppercase border self-start sm:self-auto ${
-                  (report.riskAnalysis?.aiRiskLevel || 'Low Risk') === 'Low Risk' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-amber-100 text-amber-900 border-amber-300'
-                }`}>
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-bold uppercase border ${
+                    (report.riskAnalysis?.aiRiskLevel || 'Low Risk') === 'Low Risk'
+                      ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                      : 'bg-amber-100 text-amber-900 border-amber-300'
+                  }`}
+                >
                   {report.riskAnalysis?.aiRiskLevel || 'Low Risk'}
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center text-xs">
                 <div className="bg-[#faf9f6] p-4 rounded-2xl border border-slate-200">
-                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Policy Status</span>
-                  <span className="text-base font-bold text-emerald-600 mt-1 block">{report.riskAnalysis?.policyStatus || 'Compliant'}</span>
+                  <span className="text-slate-400 font-bold uppercase text-[10px] block">Policy Status</span>
+                  <span className="text-base font-bold text-emerald-600 mt-1 block">
+                    {report.riskAnalysis?.policyStatus || 'Compliant'}
+                  </span>
                 </div>
                 <div className="bg-[#faf9f6] p-4 rounded-2xl border border-slate-200">
-                  <span className="text-[10px] uppercase font-bold text-slate-500 block">YMYL Classification</span>
+                  <span className="text-slate-400 font-bold uppercase text-[10px] block">YMYL Status</span>
                   <span className={`text-base font-bold mt-1 block ${report.riskAnalysis?.isYmyl ? 'text-amber-700' : 'text-emerald-600'}`}>
-                    {report.riskAnalysis?.isYmyl ? 'YES (Requires E-E-A-T)' : 'NO (Standard)'}
+                    {report.riskAnalysis?.isYmyl ? 'YES (E-E-A-T Needed)' : 'NO (Safe)'}
                   </span>
                 </div>
                 <div className="bg-[#faf9f6] p-4 rounded-2xl border border-slate-200">
-                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Government Context</span>
-                  <span className="text-base font-bold text-slate-800 mt-1 block">
-                    {report.riskAnalysis?.isGovernmentRelated ? 'Informational Guide' : 'Non-Civic'}
-                  </span>
-                </div>
-              </div>
-
-              {report.riskAnalysis?.governmentContext && (
-                <div className="p-4 rounded-2xl bg-[#faf9f6] border border-slate-200 text-xs sm:text-sm text-slate-700 leading-relaxed">
-                  <strong className="text-slate-900 block mb-1">Government Topic Guidance:</strong>
-                  {report.riskAnalysis.governmentContext}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Tab 12: Data Transparency */}
-          {activeTab === 'data_sources' && (
-            <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-                <h4 className="text-lg font-serif font-bold text-slate-900 flex items-center gap-2">
-                  <Database className="w-5 h-5 text-purple-600" /> Data Transparency & Freshness
-                </h4>
-                <span className="text-xs font-bold text-purple-700 bg-purple-50 px-3.5 py-1.5 rounded-full border border-purple-200 self-start sm:self-auto">
-                  Confidence Score: {report.dataConfidenceScore ?? 92}%
-                </span>
-              </div>
-
-              <div className="space-y-3">
-                <div className="p-4 rounded-2xl bg-[#faf9f6] border border-slate-200 flex items-center justify-between text-xs">
-                  <div>
-                    <p className="font-bold text-slate-900">Search Volume & Trends</p>
-                    <p className="text-slate-500 text-[11px]">Source: {report.searchVolume?.seedSv?.source || 'Google Search Index'}</p>
-                  </div>
-                  <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-200 text-[10px]">
-                    High Confidence
-                  </span>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-[#faf9f6] border border-slate-200 flex items-center justify-between text-xs">
-                  <div>
-                    <p className="font-bold text-slate-900">SERP Competitor Metrics (DR / RD / Backlinks / Traffic)</p>
-                    <p className="text-slate-500 text-[11px]">Source: Live SERP Crawling + SEBT-NEXT Median Models</p>
-                  </div>
-                  <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-200 text-[10px]">
-                    High Confidence
-                  </span>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-[#faf9f6] border border-slate-200 flex items-center justify-between text-xs">
-                  <div>
-                    <p className="font-bold text-slate-900">Domain Age & Sitemaps</p>
-                    <p className="text-slate-500 text-[11px]">Source: WHOIS / DNS Audit + XML Sitemap Inspector</p>
-                  </div>
-                  <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-200 text-[10px]">
-                    High Confidence
+                  <span className="text-slate-400 font-bold uppercase text-[10px] block">Data Confidence</span>
+                  <span className="text-base font-bold text-purple-700 mt-1 block">
+                    {report.dataConfidenceScore ?? 92}%
                   </span>
                 </div>
               </div>
             </div>
-          )}
-        </div>
+
+            {/* Back Navigation Deck */}
+            <div className="flex items-center justify-between pt-2">
+              <button
+                onClick={() => setActiveStage('execution')}
+                className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-bold flex items-center gap-1.5 transition"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to 90-Day Plan</span>
+              </button>
+
+              <button
+                onClick={() => setActiveStage('overview')}
+                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1.5 transition"
+              >
+                <span>Return to Executive Verdict</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Export Modal */}

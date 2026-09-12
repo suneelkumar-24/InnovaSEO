@@ -20,6 +20,7 @@ import {
   HelpCircle,
   BarChart2,
   Loader2,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 interface OpportunityCardProps {
@@ -29,6 +30,7 @@ interface OpportunityCardProps {
 
 export default function OpportunityCard({ report, onExploreKeyword }: OpportunityCardProps) {
   const [generatingDomains, setGeneratingDomains] = useState(false);
+  const [exportingMapping, setExportingMapping] = useState(false);
   const [domainIdeas, setDomainIdeas] = useState<
     { domain: string; tld: string; brandabilityScore: number; status: string; rationale: string }[]
   >([]);
@@ -39,6 +41,18 @@ export default function OpportunityCard({ report, onExploreKeyword }: Opportunit
   const [reverseEngineeredKeywords, setReverseEngineeredKeywords] = useState<
     { keyword: string; volume: number; kd: number; cpc: number }[] | null
   >(null);
+
+  const handleExportMapping = async () => {
+    setExportingMapping(true);
+    try {
+      const { ExportEngine } = await import('@/lib/export');
+      ExportEngine.generateCompetitorMappingSheet(report);
+    } catch (err) {
+      console.error('Failed to export mapping sheet', err);
+    } finally {
+      setExportingMapping(false);
+    }
+  };
 
   // Compute beginner viability text
   const weakCompetitorsCount = report.serp?.weakCompetitorCount ?? 2;
@@ -127,8 +141,14 @@ export default function OpportunityCard({ report, onExploreKeyword }: Opportunit
           nicheType: report.nicheType,
         }),
       });
-      const data = await res.json();
-      if (data.success && data.domains) {
+      const rawText = await res.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        console.warn('Non-JSON response from domain generator');
+      }
+      if (data?.success && data?.domains) {
         setDomainIdeas(data.domains);
       }
     } catch (e) {
@@ -147,33 +167,49 @@ export default function OpportunityCard({ report, onExploreKeyword }: Opportunit
   const handleReverseEngineer = () => {
     setReverseEngineering(true);
     setTimeout(() => {
-      setReverseEngineeredKeywords([
-        { keyword: `${report.seedKeyword} prices`, volume: Math.round(seedVolume * 0.35), kd: 12, cpc: 0.45 },
-        { keyword: `cheap ${report.seedKeyword}`, volume: Math.round(seedVolume * 0.18), kd: 8, cpc: 0.65 },
-        { keyword: `best ${report.seedKeyword} 2026`, volume: Math.round(seedVolume * 0.15), kd: 14, cpc: 0.85 },
-        { keyword: `${report.seedKeyword} calories & nutrition`, volume: Math.round(seedVolume * 0.12), kd: 9, cpc: 0.35 },
-        { keyword: `${report.seedKeyword} breakfast hours`, volume: Math.round(seedVolume * 0.22), kd: 11, cpc: 0.25 },
-      ]);
+      const realItems = report.keywords?.items && report.keywords.items.length > 0
+        ? report.keywords.items.slice(0, 6).map((k) => ({
+            keyword: k.keyword,
+            volume: k.searchVolume,
+            kd: k.kd,
+            cpc: k.cpc,
+          }))
+        : [
+            { keyword: `${report.seedKeyword} guide`, volume: Math.round(seedVolume * 0.35), kd: 12, cpc: 0.45 },
+            { keyword: `best ${report.seedKeyword}`, volume: Math.round(seedVolume * 0.25), kd: 14, cpc: 0.85 },
+            { keyword: `${report.seedKeyword} vs alternatives`, volume: Math.round(seedVolume * 0.18), kd: 9, cpc: 0.65 },
+          ];
+      setReverseEngineeredKeywords(realItems);
       setReverseEngineering(false);
-    }, 1200);
+    }, 600);
   };
 
   const countryTierInfo = getCountryTierInfo(selectedCountry);
-  const top1Volume = seedVolume * 0.32;
-  const top2Volume = seedVolume * 0.22;
-  const top3Volume = seedVolume * 0.16;
+  const totalNicheVolume =
+    report.searchVolume?.totalNicheSv?.value ||
+    (report.keywords?.items && report.keywords.items.length > 0
+      ? report.keywords.items.reduce((acc, k) => acc + (k.searchVolume || 0), 0)
+      : 0) ||
+    Math.max(seedVolume * 15, 18000);
+
+  // Cluster-aware effective monthly traffic demand
+  const effectiveMonthlyDemand = Math.max(seedVolume, Math.round(totalNicheVolume * 0.35), 2400);
+
+  const top1Volume = Math.round(effectiveMonthlyDemand * 0.32);
+  const top2Volume = Math.round(effectiveMonthlyDemand * 0.22);
+  const top3Volume = Math.round(effectiveMonthlyDemand * 0.16);
 
   const rpm = countryTierInfo.baseRpm;
-  const rank1Est = Math.round((top1Volume * rpm) / 1000);
-  const rank2Est = Math.round((top2Volume * rpm) / 1000);
-  const rank3Est = Math.round((top3Volume * rpm) / 1000);
+  const rank1Est = Math.max(Math.round((top1Volume * rpm) / 1000), 45);
+  const rank2Est = Math.max(Math.round((top2Volume * rpm) / 1000), 30);
+  const rank3Est = Math.max(Math.round((top3Volume * rpm) / 1000), 20);
 
-  const rank1Min = Math.round((top1Volume * countryTierInfo.rpmRange[0]) / 1000);
-  const rank1Max = Math.round((top1Volume * countryTierInfo.rpmRange[1]) / 1000);
-  const rank2Min = Math.round((top2Volume * countryTierInfo.rpmRange[0]) / 1000);
-  const rank2Max = Math.round((top2Volume * countryTierInfo.rpmRange[1]) / 1000);
-  const rank3Min = Math.round((top3Volume * countryTierInfo.rpmRange[0]) / 1000);
-  const rank3Max = Math.round((top3Volume * countryTierInfo.rpmRange[1]) / 1000);
+  const rank1Min = Math.max(Math.round((top1Volume * countryTierInfo.rpmRange[0]) / 1000), 35);
+  const rank1Max = Math.max(Math.round((top1Volume * countryTierInfo.rpmRange[1]) / 1000), 65);
+  const rank2Min = Math.max(Math.round((top2Volume * countryTierInfo.rpmRange[0]) / 1000), 25);
+  const rank2Max = Math.max(Math.round((top2Volume * countryTierInfo.rpmRange[1]) / 1000), 45);
+  const rank3Min = Math.max(Math.round((top3Volume * countryTierInfo.rpmRange[0]) / 1000), 15);
+  const rank3Max = Math.max(Math.round((top3Volume * countryTierInfo.rpmRange[1]) / 1000), 35);
 
   const countryBreakdown =
     report.searchVolume?.topCountries && report.searchVolume.topCountries.length > 0
@@ -404,6 +440,73 @@ export default function OpportunityCard({ report, onExploreKeyword }: Opportunit
           </div>
         </div>
 
+        {/* FAST-MOVER CLONE & 90-DAY KEYWORD MAPPING BANNER */}
+        <div className="p-6 rounded-3xl bg-amber-50/80 border-2 border-amber-300 space-y-4 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-amber-200">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-200 text-amber-900 font-black text-xs uppercase mb-1">
+                <Zap className="w-3.5 h-3.5 text-amber-700" />
+                <span>Fast-Mover Fast-Ranking Formula</span>
+              </div>
+              <h3 className="text-xl font-serif font-bold text-slate-900">
+                &ldquo;Chalte Huye Business Ko Copy Karo&rdquo; &bull; 90-Day Content Roadmap
+              </h3>
+            </div>
+
+            <button
+              onClick={handleExportMapping}
+              disabled={exportingMapping}
+              className="px-4 py-2.5 rounded-full bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition self-start sm:self-auto shrink-0 disabled:opacity-50"
+            >
+              {exportingMapping ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+              <span>{exportingMapping ? 'Generating Sheet...' : '⚡ Export 90-Day Mapping Sheet'}</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="bg-white p-4 rounded-2xl border border-amber-200 space-y-1">
+              <span className="text-[10px] uppercase font-bold text-amber-800 block">Topical Compression Rule</span>
+              <span className="text-sm font-bold text-slate-900 block">8 Pillar Articles vs. 14 Competitor Posts</span>
+              <p className="text-[11px] text-slate-600 leading-tight">
+                Synthesize thin competitor articles into 8 superior, dense, comprehensive guides to outrank in 30&ndash;90 days.
+              </p>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-amber-200 space-y-1">
+              <span className="text-[10px] uppercase font-bold text-amber-800 block">Publishing Cadence</span>
+              <span className="text-sm font-bold text-slate-900 block">1&ndash;2 Articles / Day Pre-Mapped</span>
+              <p className="text-[11px] text-slate-600 leading-tight">
+                Export Ahrefs Top Pages CSV, clean in Google Sheets, and publish daily without keyword hunting delays.
+              </p>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-amber-200 space-y-1">
+              <span className="text-[10px] uppercase font-bold text-amber-800 block">Backup Competitors Strategy</span>
+              <span className="text-sm font-bold text-slate-900 block">1 Primary + 2 Backup Low-DR Sites</span>
+              <p className="text-[11px] text-slate-600 leading-tight">
+                Once primary 60&ndash;100 articles are published, immediately pivot to backup low-DR keyword sheets.
+              </p>
+            </div>
+          </div>
+
+          {/* Adaptive Intelligence Insights */}
+          {report.adaptiveIntelligenceInsights && report.adaptiveIntelligenceInsights.length > 0 && (
+            <div className="bg-white/90 p-4 rounded-2xl border border-amber-200 space-y-2">
+              <span className="text-[10px] uppercase font-extrabold text-slate-500 tracking-wider block">
+                ADAPTIVE CONTEXTUAL INTELLIGENCE (MULTI-SIGNAL COMPENSATION)
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {report.adaptiveIntelligenceInsights.map((insight, idx) => (
+                  <div key={idx} className="flex items-start gap-2 text-xs text-slate-700">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                    <span>{insight}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Highlight Callout Badges */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
           <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#faf9f6] border border-slate-200 text-xs sm:text-sm text-slate-700">
@@ -601,7 +704,7 @@ export default function OpportunityCard({ report, onExploreKeyword }: Opportunit
             If you rank #1–#3 (display ads & affiliate)
           </h3>
           <p className="text-xs text-slate-500">
-            {countryTierInfo.tier} · Est. RPM ~${countryTierInfo.baseRpm}/1k visits · volume {formatCompact(seedVolume)}/mo in {selectedCountry}
+            {countryTierInfo.tier} · Est. RPM ~${countryTierInfo.baseRpm}/1k visits · Seed Query: {formatCompact(seedVolume)}/mo (Topical Cluster Demand: ~{formatCompact(totalNicheVolume)}/mo in {selectedCountry})
           </p>
         </div>
 

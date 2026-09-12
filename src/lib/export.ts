@@ -262,6 +262,95 @@ export class ExportEngine {
   }
 
   /**
+   * Generates 90-Day Competitor Keyword Mapping & Content Scheduler Excel Sheet (.xlsx)
+   */
+  public static generateCompetitorMappingSheet(report: NicheViabilityReport): void {
+    const wb = XLSX.utils.book_new();
+
+    const competitors = report.serp?.competitors || [];
+    const primaryComp = competitors.find((c) => c.dr <= 5) || competitors[0] || {
+      domain: `${report.seedKeyword.replace(/\s+/g, '')}.com`,
+      dr: 4,
+      url: `https://${report.seedKeyword.replace(/\s+/g, '')}.com`,
+    };
+
+    const backupComps = competitors.filter((c) => c.domain !== primaryComp.domain).slice(0, 3);
+
+    // Build 60-90 Day Schedule
+    const keywords = report.keywords?.items && report.keywords.items.length > 0
+      ? report.keywords.items
+      : [
+          { keyword: report.seedKeyword, searchVolume: report.searchVolume?.seedSv?.value || 15000, kd: 6, cpc: 0.5, intent: 'Informational', cluster: 'Pillar' },
+          { keyword: `${report.seedKeyword} guide`, searchVolume: 4200, kd: 4, cpc: 0.45, intent: 'Informational', cluster: 'Pillar' },
+          { keyword: `best ${report.seedKeyword}`, searchVolume: 3100, kd: 8, cpc: 0.75, intent: 'Commercial', cluster: 'Buying Guide' },
+        ];
+
+    const today = new Date();
+    const rows: any[] = [];
+
+    keywords.forEach((kw, idx) => {
+      const dayNum = Math.floor(idx / 2) + 1; // 2 articles per day
+      const postDate = new Date(today);
+      postDate.setDate(today.getDate() + dayNum);
+
+      const isPrimary = idx < 20;
+      const assignedComp = isPrimary
+        ? primaryComp
+        : backupComps[(idx % backupComps.length) || 0] || primaryComp;
+
+      const slug = kw.keyword
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+
+      rows.push({
+        'Schedule Day': `Day ${dayNum}`,
+        'Article #': idx + 1,
+        'Estimated Publish Date': postDate.toISOString().split('T')[0],
+        'Target Keyword': kw.keyword,
+        'Search Volume': kw.searchVolume,
+        'KD (Difficulty)': kw.kd,
+        'Search Intent': (kw.intent || 'Informational').toUpperCase(),
+        'Competitor Tier': isPrimary ? 'Primary Competitor' : 'Backup Competitor',
+        'Competitor Domain': assignedComp.domain,
+        'Competitor URL': assignedComp.url || `https://${assignedComp.domain}/${slug}`,
+        'Our Recommended Slug': `/${slug}/`,
+        'Target Word Count': kw.intent === 'Informational' ? 2200 : 1800,
+        'On-Page Checklist': 'KW in Title, URL, First 100 Words, H2/H3, WebP Images',
+        'Internal Link Silo': (kw as any).cluster || 'Core Pillar Silo',
+        'Status': 'To Write',
+      });
+    });
+
+    const wsSchedule = XLSX.utils.json_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, wsSchedule, '90-Day Keyword Mapping');
+
+    // Competitors Reference Sheet
+    const compRows = [
+      {
+        Tier: 'PRIMARY COMPETITOR (Replicate First)',
+        Domain: primaryComp.domain,
+        DR: primaryComp.dr,
+        DA: (primaryComp as any).da || 5,
+        'Est. Monthly Traffic': (primaryComp as any).organicTraffic || 25000,
+        'URL / Top Pages': primaryComp.url,
+      },
+      ...backupComps.map((c, i) => ({
+        Tier: `BACKUP COMPETITOR #${i + 1} (Shift Once 60 Articles Done)`,
+        Domain: c.domain,
+        DR: c.dr,
+        DA: (c as any).da || 8,
+        'Est. Monthly Traffic': (c as any).organicTraffic || 18000,
+        'URL / Top Pages': c.url,
+      })),
+    ];
+    const wsCompetitors = XLSX.utils.json_to_sheet(compRows);
+    XLSX.utils.book_append_sheet(wb, wsCompetitors, 'Primary & Backup Competitors');
+
+    XLSX.writeFile(wb, `${report.seedKeyword.replace(/\s+/g, '_')}_Competitor_Keyword_Mapping_90Day.xlsx`);
+  }
+
+  /**
    * Generates a CSV download
    */
   public static generateCsv(report: NicheViabilityReport): void {

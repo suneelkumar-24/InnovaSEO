@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
+import { Redis } from '@upstash/redis';
 import {
   User,
   NicheViabilityReport,
@@ -10,6 +11,10 @@ import {
   ScoringWeights,
   AutopilotConfig,
   AutopilotDiscoveredItem,
+  ResearchRecord,
+  SearchOrigin,
+  ResearchDeductions,
+  getCountryTierInfo,
 } from './providers/types';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -17,24 +22,7 @@ const DB_PATH = path.join(DATA_DIR, 'db.json');
 
 export interface DatabaseSchema {
   users: Array<User & { passwordHash: string }>;
-  researches: Array<{
-    id: string;
-    userId: string;
-    seedKeyword: string;
-    nicheType: string;
-    businessModel: string;
-    targetCountry: string;
-    language: string;
-    status: 'queued' | 'running' | 'completed' | 'failed';
-    progress: number;
-    currentPhase: number;
-    viabilityScore: number;
-    verdict: string;
-    dataConfidence: number;
-    report?: NicheViabilityReport;
-    createdAt: string;
-    updatedAt: string;
-  }>;
+  researches: ResearchRecord[];
   savedNiches: SavedNicheItem[];
   apiKeys: Array<{
     id: string;
@@ -548,16 +536,66 @@ function initializeDatabase(): DatabaseSchema {
   return initialDb;
 }
 
+// Cloud Redis client (if Upstash or Vercel KV environment variables are configured)
+function getRedisClient(): Redis | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+  if (url && token) {
+    try {
+      return new Redis({ url, token });
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+const REDIS_DB_KEY = 'niche_hunter_db_v1';
 let memoryDbCache: DatabaseSchema | null = null;
 let lastDbReadMtime = 0;
+let cloudSyncAttempted = false;
+
+/**
+ * Initializes or syncs cloud database with local state on Vercel deployment
+ */
+export async function syncCloudDatabase(): Promise<DatabaseSchema> {
+  const redis = getRedisClient();
+  if (redis) {
+    try {
+      const raw = await redis.get<string | DatabaseSchema>(REDIS_DB_KEY);
+      if (raw) {
+        const data: DatabaseSchema = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (data && Array.isArray(data.users)) {
+          memoryDbCache = data;
+          cloudSyncAttempted = true;
+          return data;
+        }
+      } else {
+        // First-time seed: upload local database to Upstash cloud
+        const current = readDb();
+        await redis.set(REDIS_DB_KEY, JSON.stringify(current));
+        cloudSyncAttempted = true;
+        return current;
+      }
+    } catch (err: any) {
+      console.warn('Cloud DB sync notice (falling back to memory):', err?.message || err);
+    }
+  }
+  return readDb();
+}
 
 export function readDb(): DatabaseSchema {
   try {
+    // If running in cloud environment and memory cache exists, return memory cache
+    if (memoryDbCache && (process.env.VERCEL || process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL)) {
+      return memoryDbCache;
+    }
+
     if (!fs.existsSync(DB_PATH)) {
       memoryDbCache = initializeDatabase();
       return memoryDbCache;
     }
-    
+
     // Check if file was modified externally
     const stat = fs.statSync(DB_PATH);
     if (memoryDbCache && stat.mtimeMs <= lastDbReadMtime) {
@@ -584,8 +622,18 @@ export function readDb(): DatabaseSchema {
 }
 
 export function writeDb(data: DatabaseSchema): void {
-  // Update memory cache immediately
+  // 1. Update memory cache immediately
   memoryDbCache = data;
+
+  // 2. Sync to Cloud Upstash Redis (if configured on Vercel)
+  const redis = getRedisClient();
+  if (redis) {
+    redis.set(REDIS_DB_KEY, JSON.stringify(data)).catch((err) => {
+      console.warn('Cloud DB write sync error:', err?.message || err);
+    });
+  }
+
+  // 3. Write to local file if writable (local dev environment)
   try {
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -594,8 +642,61 @@ export function writeDb(data: DatabaseSchema): void {
     const stat = fs.statSync(DB_PATH);
     lastDbReadMtime = stat.mtimeMs;
   } catch (error) {
-    console.error('Error writing DB:', error);
+    // On Vercel serverless containers, filesystem is read-only. Memory + Cloud Redis handles persistence.
+    if (!process.env.VERCEL) {
+      console.warn('Notice: Local DB file write skipped or read-only filesystem:', error);
+    }
   }
+}
+
+export function generateDeductionsFromReport(
+  report: NicheViabilityReport,
+  origin: SearchOrigin = 'manual',
+  customWhyUntapped?: string
+): ResearchDeductions {
+  const weakComps = (report.serp?.competitors || []).filter((c) => c.isWeakCompetitor || c.dr < 20);
+  const lowestWeakDr = weakComps.length > 0 ? Math.min(...weakComps.map((c) => c.dr)) : (report.serp?.medians?.dr?.min || 18);
+  const tierInfo = getCountryTierInfo(report.targetCountry || 'United States');
+  const zeroClickImmune = !report.serp?.aiOverviewPresent || report.serp?.aiOverviewImpact === 'None';
+
+  let recommendedAsset = 'Programmatic Database / Hub (500+ URLs)';
+  if (report.nicheType === 'menu') {
+    recommendedAsset = 'Programmatic Menu, Calories & Price Matrix (500+ items)';
+  } else if (report.nicheType === 'utility' || report.nicheType === 'tool-based') {
+    recommendedAsset = 'Single-Page Interactive Calculator / Specification Canvas';
+  } else if (report.businessModel === 'affiliate') {
+    recommendedAsset = 'Buyer Review & Comparison Hub with Technical Rigging Silos';
+  } else if (report.businessModel === 'lead_gen') {
+    recommendedAsset = 'Local Lead Generation & Quote Distribution Gateway';
+  }
+
+  let summary = customWhyUntapped || '';
+  if (!summary) {
+    if (origin === 'auto_hunter') {
+      summary = `Auto Hunter Radar discovered ${weakComps.length} low DR competitors (Lowest DR ${lowestWeakDr}). ${tierInfo.tier} demand with $${tierInfo.rpmRange[0]}-$${tierInfo.rpmRange[1]} RPM potential.`;
+    } else if (origin === 'marketplace_reverse') {
+      summary = `Marketplace Exit Blueprint reversed: Captures ${report.searchVolume?.targetCountrySv?.value?.toLocaleString() || '15,000'} monthly volume with 30x-40x exit valuation multiplier.`;
+    } else if (origin === 'anomaly_scanner') {
+      summary = `DR 0-20 Anomaly verified: ${weakComps.length} low-authority sites outranking legacy portals with proven organic demand.`;
+    } else {
+      summary = `Manual Search Dossier: Found ${weakComps.length} beatable domains (Lowest DR ${lowestWeakDr}). ${zeroClickImmune ? 'Zero AI Overview risk (100% immune).' : 'Moderate AI Overview presence.'}`;
+    }
+  }
+
+  return {
+    summary,
+    weakCompetitorsFound: weakComps.length,
+    lowestCompetitorDr: lowestWeakDr,
+    zeroClickImmune,
+    aiOverviewActive: Boolean(report.serp?.aiOverviewPresent),
+    countryTier: tierInfo.tier,
+    estimatedRpm: `$${tierInfo.rpmRange[0]} - $${tierInfo.rpmRange[1]} RPM`,
+    recommendedAsset,
+    estimatedMonthlyRevenue: report.monetization?.estimatedMonthlyRevenueRange || '$1,500 - $5,000 / mo',
+    topKeyReasons: report.keyReasons?.slice(0, 3) || [],
+    keyRisks: report.mainRisks?.slice(0, 2) || [],
+    expansionCount: report.multiCountryExpansions?.length || 0,
+  };
 }
 
 // Helper methods
@@ -637,6 +738,12 @@ export const db = {
     const data = readDb();
     return data.users.map(({ passwordHash, ...u }) => u);
   },
+  deleteUser: (userId: string) => {
+    const data = readDb();
+    data.users = data.users.filter((u) => u.id !== userId);
+    writeDb(data);
+    return true;
+  },
   incrementApiUsage: (userId: string) => {
     const data = readDb();
     const user = data.users.find((u) => u.id === userId);
@@ -646,39 +753,155 @@ export const db = {
     }
   },
 
-  // Researches
+  // Researches & Search History
   getResearches: (userId?: string) => {
     const data = readDb();
+    let list = data.researches;
     if (userId) {
-      return data.researches.filter((r) => r.userId === userId).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      list = list.filter((r) => r.userId === userId);
     }
-    return data.researches.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return list
+      .map((r) => {
+        if (!r.deductions && r.report) {
+          r.deductions = generateDeductionsFromReport(r.report, r.searchOrigin || 'manual');
+        }
+        if (!r.searchOrigin) {
+          r.searchOrigin = r.id.includes('_ap_') ? 'auto_hunter' : 'manual';
+        }
+        if (!r.executedBy) {
+          r.executedBy = r.searchOrigin === 'auto_hunter' ? 'Auto Hunter Radar Agent' : 'User (Manual Hunt)';
+        }
+        return r;
+      })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
+
+  getHistory: (options?: {
+    userId?: string;
+    origin?: SearchOrigin | 'all';
+    query?: string;
+    verdict?: string;
+    limit?: number;
+  }) => {
+    const data = readDb();
+    let all = data.researches.map((r) => {
+      if (!r.deductions && r.report) {
+        r.deductions = generateDeductionsFromReport(r.report, r.searchOrigin || 'manual');
+      }
+      if (!r.searchOrigin) {
+        r.searchOrigin = r.id.includes('_ap_') ? 'auto_hunter' : 'manual';
+      }
+      if (!r.executedBy) {
+        r.executedBy = r.searchOrigin === 'auto_hunter' ? 'Auto Hunter Radar Agent' : 'User (Manual Hunt)';
+      }
+      return r;
+    });
+
+    if (options?.userId) {
+      all = all.filter((r) => r.userId === options.userId);
+    }
+
+    const totalSearches = all.length;
+    const manualCount = all.filter((r) => r.searchOrigin === 'manual').length;
+    const autoHunterCount = all.filter((r) => r.searchOrigin === 'auto_hunter').length;
+    const marketplaceCount = all.filter((r) => r.searchOrigin === 'marketplace_reverse').length;
+    const anomalyCount = all.filter((r) => r.searchOrigin === 'anomaly_scanner').length;
+    const strongOpportunityCount = all.filter((r) => r.viabilityScore >= 80).length;
+    const averageScore =
+      totalSearches > 0
+        ? Math.round(all.reduce((sum, r) => sum + (r.viabilityScore || 0), 0) / totalSearches)
+        : 0;
+
+    let filtered = [...all];
+
+    if (options?.origin && options.origin !== 'all') {
+      filtered = filtered.filter((r) => r.searchOrigin === options.origin);
+    }
+
+    if (options?.verdict && options.verdict !== 'all') {
+      const v = options.verdict.toLowerCase();
+      filtered = filtered.filter((r) => r.verdict.toLowerCase().includes(v));
+    }
+
+    if (options?.query && options.query.trim()) {
+      const q = options.query.toLowerCase().trim();
+      filtered = filtered.filter(
+        (r) =>
+          r.seedKeyword.toLowerCase().includes(q) ||
+          r.targetCountry.toLowerCase().includes(q) ||
+          r.nicheType.toLowerCase().includes(q) ||
+          (r.deductions?.summary && r.deductions.summary.toLowerCase().includes(q)) ||
+          (r.report?.nicheName && r.report.nicheName.toLowerCase().includes(q))
+      );
+    }
+
+    filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    if (options?.limit) {
+      filtered = filtered.slice(0, options.limit);
+    }
+
+    return {
+      history: filtered,
+      stats: {
+        totalSearches,
+        manualCount,
+        autoHunterCount,
+        marketplaceCount,
+        anomalyCount,
+        strongOpportunityCount,
+        averageScore,
+      },
+    };
+  },
+
   getResearchById: (id: string) => {
     const data = readDb();
     if (!id) return null;
     // 1. Exact match
     const exact = data.researches.find((r) => r.id === id);
-    if (exact) return exact;
+    if (exact) {
+      if (!exact.deductions && exact.report) {
+        exact.deductions = generateDeductionsFromReport(exact.report, exact.searchOrigin || 'manual');
+      }
+      return exact;
+    }
 
     // 2. Saved niche researchId match
     const savedMatch = data.savedNiches.find((s) => s.id === id || s.researchId === id);
     if (savedMatch) {
       const fromSaved = data.researches.find((r) => r.id === savedMatch.researchId);
-      if (fromSaved) return fromSaved;
+      if (fromSaved) {
+        if (!fromSaved.deductions && fromSaved.report) {
+          fromSaved.deductions = generateDeductionsFromReport(fromSaved.report, fromSaved.searchOrigin || 'manual');
+        }
+        return fromSaved;
+      }
     }
 
-    // 3. Suffix / partial match (e.g. res_1788664588950_ct26j vs res_1788684588950_ct26j)
+    // 3. Suffix / partial match
     const suffix = id.includes('_') ? id.split('_').pop() : id;
     if (suffix && suffix.length >= 4) {
       const partial = data.researches.find((r) => r.id.endsWith(`_${suffix}`) || r.id.includes(suffix));
-      if (partial) return partial;
+      if (partial) {
+        if (!partial.deductions && partial.report) {
+          partial.deductions = generateDeductionsFromReport(partial.report, partial.searchOrigin || 'manual');
+        }
+        return partial;
+      }
     }
 
     return null;
   },
-  saveResearch: (research: DatabaseSchema['researches'][0]) => {
+
+  saveResearch: (research: ResearchRecord) => {
     const data = readDb();
+    if (!research.deductions && research.report) {
+      research.deductions = generateDeductionsFromReport(
+        research.report,
+        research.searchOrigin || 'manual'
+      );
+    }
     const idx = data.researches.findIndex((r) => r.id === research.id);
     if (idx >= 0) {
       data.researches[idx] = research;
@@ -688,10 +911,24 @@ export const db = {
     writeDb(data);
     return research;
   },
+
   deleteResearch: (id: string, userId?: string) => {
     const data = readDb();
     data.researches = data.researches.filter((r) => r.id !== id || (userId && r.userId !== userId));
     data.savedNiches = data.savedNiches.filter((s) => s.researchId !== id);
+    writeDb(data);
+    return true;
+  },
+
+  clearHistory: (userId?: string, origin?: SearchOrigin | 'all') => {
+    const data = readDb();
+    if (!origin || origin === 'all') {
+      data.researches = userId ? data.researches.filter((r) => r.userId !== userId) : [];
+    } else {
+      data.researches = data.researches.filter(
+        (r) => (userId && r.userId !== userId) || r.searchOrigin !== origin
+      );
+    }
     writeDb(data);
     return true;
   },

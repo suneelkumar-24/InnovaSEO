@@ -29,6 +29,8 @@ export async function POST(req: NextRequest) {
       minSv = 500,
       maxKd = 45,
       optionalKeywords = [],
+      searchOrigin = 'manual',
+      executedBy,
     } = body;
 
     if (!seedKeyword || typeof seedKeyword !== 'string' || !seedKeyword.trim()) {
@@ -36,6 +38,8 @@ export async function POST(req: NextRequest) {
     }
 
     const researchId = `res_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const effectiveExecutedBy =
+      executedBy || (user?.name ? `${user.name} (Manual)` : 'User (Manual Hunt)');
 
     // Create preliminary queued record
     db.saveResearch({
@@ -52,6 +56,8 @@ export async function POST(req: NextRequest) {
       viabilityScore: 0,
       verdict: 'Analyzing...',
       dataConfidence: 0,
+      searchOrigin,
+      executedBy: effectiveExecutedBy,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
@@ -60,7 +66,7 @@ export async function POST(req: NextRequest) {
       userId,
       level: 'info',
       module: 'Pipeline',
-      message: `Started 15-phase research for "${seedKeyword.trim()}" (${targetCountry})`,
+      message: `Started 15-phase research for "${seedKeyword.trim()}" (${targetCountry}) [Origin: ${searchOrigin}]`,
     });
 
     // Execute 15-phase pipeline
@@ -76,7 +82,7 @@ export async function POST(req: NextRequest) {
       userId,
     });
 
-    // Save completed record with full dossier
+    // Save completed record with full dossier & auto deductions
     db.saveResearch({
       id: researchId,
       userId,
@@ -91,6 +97,8 @@ export async function POST(req: NextRequest) {
       viabilityScore: report.overallViabilityScore,
       verdict: report.verdict,
       dataConfidence: report.dataConfidenceScore,
+      searchOrigin,
+      executedBy: effectiveExecutedBy,
       report,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

@@ -7,7 +7,10 @@ import { NicheType, BusinessModel } from '@/lib/providers/types';
 export async function GET(req: NextRequest) {
   try {
     const user = await getUserFromRequest(req);
-    const researches = db.getResearches(user ? user.id : undefined);
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized. Please sign in.' }, { status: 401 });
+    }
+    const researches = user.role === 'admin' ? db.getResearches() : db.getResearches(user.id);
     return NextResponse.json({ success: true, researches });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -17,7 +20,23 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const user = await getUserFromRequest(req);
-    const userId = user?.id || 'usr_demo_02';
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Please log in to perform niche research.' },
+        { status: 401 }
+      );
+    }
+
+    // Check & Deduct Daily Credit (50 credits/day)
+    const creditCheck = db.deductUserCredit(user.id, 1);
+    if (!creditCheck.success) {
+      return NextResponse.json(
+        { success: false, error: creditCheck.error },
+        { status: 403 }
+      );
+    }
+
+    const userId = user.id;
 
     const body = await req.json();
     const {

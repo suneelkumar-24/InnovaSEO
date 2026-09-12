@@ -20,6 +20,13 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Invalid email or password.' }, { status: 401 });
       }
 
+      if (user.status === 'suspended') {
+        return NextResponse.json(
+          { success: false, error: 'Your account is suspended. Please contact the administrator.' },
+          { status: 403 }
+        );
+      }
+
       const isValid = bcrypt.compareSync(password, user.passwordHash);
       if (!isValid) {
         return NextResponse.json({ success: false, error: 'Invalid email or password.' }, { status: 401 });
@@ -59,18 +66,40 @@ export async function POST(req: NextRequest) {
       return response;
     }
 
-    // 2. REGISTER
+    // 2. REGISTER (Users create their own personal workspace account)
     if (action === 'register') {
       const { email, password, name } = body;
       if (!email || !password || !name) {
-        return NextResponse.json({ success: false, error: 'Name, email, and password are required.' }, { status: 400 });
+        return NextResponse.json(
+          { success: false, error: 'Full name, email, and password are required.' },
+          { status: 400 }
+        );
+      }
+
+      const cleanEmail = email.trim().toLowerCase();
+      if (!cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+        return NextResponse.json(
+          { success: false, error: 'Please enter a valid email address.' },
+          { status: 400 }
+        );
       }
 
       if (password.length < 6) {
-        return NextResponse.json({ success: false, error: 'Password must be at least 6 characters.' }, { status: 400 });
+        return NextResponse.json(
+          { success: false, error: 'Password must be at least 6 characters.' },
+          { status: 400 }
+        );
       }
 
-      const safeUser = db.createUser(email, password, name, 'user');
+      const existing = db.getUserByEmail(cleanEmail);
+      if (existing) {
+        return NextResponse.json(
+          { success: false, error: 'An account with this email already exists. Please sign in.' },
+          { status: 409 }
+        );
+      }
+
+      const safeUser = db.createUser(cleanEmail, password, name.trim(), 'user');
       const token = signJwt({
         userId: safeUser.id,
         email: safeUser.email,
@@ -97,7 +126,7 @@ export async function POST(req: NextRequest) {
         userId: safeUser.id,
         level: 'info',
         module: 'Auth',
-        message: `New user registered: ${safeUser.email}`,
+        message: `New user personal workspace registered: ${safeUser.email}`,
       });
 
       return response;

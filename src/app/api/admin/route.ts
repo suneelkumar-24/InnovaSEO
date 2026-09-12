@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { getUserFromRequest } from '@/lib/auth';
+import { requireAdmin } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await getUserFromRequest(req);
-    // Allow demo access or check admin role
+    const auth = await requireAdmin(req);
+    if (!auth.authorized || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Administrator access required.' },
+        { status: auth.user ? 403 : 401 }
+      );
+    }
+
     const users = db.getAllUsers();
     const logs = db.getLogs(100);
     const researches = db.getResearches();
@@ -39,25 +45,33 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getUserFromRequest(req);
+    const auth = await requireAdmin(req);
+    if (!auth.authorized || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Administrator access required.' },
+        { status: auth.user ? 403 : 401 }
+      );
+    }
+
+    const currentAdmin = auth.user;
     const body = await req.json();
     const { action } = body;
 
     if (action === 'clear_logs') {
       db.addLog({
-        userId: user?.id,
+        userId: currentAdmin.id,
         level: 'warn',
         module: 'Admin',
-        message: 'System logs cleared by administrator.',
+        message: `System logs cleared by administrator (${currentAdmin.email}).`,
       });
       return NextResponse.json({ success: true, message: 'Logs cleared.' });
     }
 
     if (action === 'create_user') {
-      const { email, password, name, role } = body;
+      const { email, password, name, role = 'user', dailyCreditsLimit = 50 } = body;
       if (!email || !password || !name) {
         return NextResponse.json(
-          { success: false, error: 'Name, email, and password are required.' },
+          { success: false, error: 'Full name, email, and password are required.' },
           { status: 400 }
         );
       }
@@ -67,14 +81,40 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
-      const newUser = db.createUser(email, password, name, role || 'user');
+      const newUser = db.createUser(
+        email.trim().toLowerCase(),
+        password,
+        name.trim(),
+        role === 'admin' ? 'admin' : 'user',
+        'active',
+        Number(dailyCreditsLimit) || 999999
+      );
+
       db.addLog({
-        userId: user?.id,
+        userId: currentAdmin.id,
         level: 'info',
         module: 'Admin',
-        message: `Admin created user account: ${email} (${role || 'user'})`,
+        message: `Admin (${currentAdmin.email}) added new user account: ${newUser.email} (${newUser.role}, Quota: ${newUser.dailyCreditsLimit} credits/day)`,
       });
       return NextResponse.json({ success: true, user: newUser });
+    }
+
+    if (action === 'update_credits') {
+      const { userId, credits, dailyLimit } = body;
+      if (!userId || typeof credits !== 'number') {
+        return NextResponse.json(
+          { success: false, error: 'User ID and credits amount are required.' },
+          { status: 400 }
+        );
+      }
+      const updatedUser = db.updateUserCredits(userId, Number(credits), typeof dailyLimit === 'number' ? Number(dailyLimit) : undefined);
+      db.addLog({
+        userId: currentAdmin.id,
+        level: 'info',
+        module: 'Admin',
+        message: `Admin updated credits for ${updatedUser.email}: ${credits} remaining (Daily limit: ${updatedUser.dailyCreditsLimit})`,
+      });
+      return NextResponse.json({ success: true, user: updatedUser });
     }
 
     if (action === 'reset_password') {
@@ -93,25 +133,48 @@ export async function POST(req: NextRequest) {
       }
       db.updateUserPassword(userId, newPassword);
       db.addLog({
-        userId: user?.id,
+        userId: currentAdmin.id,
         level: 'warn',
         module: 'Admin',
-        message: `Admin reset password for user ID: ${userId}`,
+        message: `Admin (${currentAdmin.email}) reset password for user ID: ${userId}`,
       });
       return NextResponse.json({ success: true, message: 'Password updated successfully.' });
     }
 
     if (action === 'update_user') {
-      const { userId, name, email, role } = body;
+      const { userId, name, email, role, status } = body;
       if (!userId) {
         return NextResponse.json({ success: false, error: 'User ID is required.' }, { status: 400 });
       }
-      const updatedUser = db.updateUser(userId, { name, email, role });
+
+      // Safeguard: Admin cannot demote or suspend themselves
+      if (userId === currentAdmin.id) {
+        if (role && role !== 'admin') {
+          return NextResponse.json(
+            { success: false, error: 'You cannot remove your own admin privileges.' },
+            { status: 400 }
+          );
+        }
+        if (status && status === 'suspended') {
+          return NextResponse.json(
+            { success: false, error: 'You cannot suspend your own account.' },
+            { status: 400 }
+          );
+        }
+      }
+
+      const updatedUser = db.updateUser(userId, {
+        name: name ? name.trim() : undefined,
+        email: email ? email.trim().toLowerCase() : undefined,
+        role,
+        status,
+      });
+
       db.addLog({
-        userId: user?.id,
+        userId: currentAdmin.id,
         level: 'info',
         module: 'Admin',
-        message: `Admin updated user details for: ${updatedUser.email}`,
+        message: `Admin updated account details for: ${updatedUser.email} (Status: ${updatedUser.status || 'active'}, Role: ${updatedUser.role})`,
       });
       return NextResponse.json({ success: true, user: updatedUser });
     }
@@ -121,14 +184,22 @@ export async function POST(req: NextRequest) {
       if (!userId) {
         return NextResponse.json({ success: false, error: 'User ID is required.' }, { status: 400 });
       }
+
+      if (userId === currentAdmin.id) {
+        return NextResponse.json(
+          { success: false, error: 'You cannot delete your own admin account.' },
+          { status: 400 }
+        );
+      }
+
       db.deleteUser(userId);
       db.addLog({
-        userId: user?.id,
+        userId: currentAdmin.id,
         level: 'warn',
         module: 'Admin',
-        message: `Admin deleted user ID: ${userId}`,
+        message: `Admin deleted user account ID: ${userId}`,
       });
-      return NextResponse.json({ success: true, message: 'User deleted.' });
+      return NextResponse.json({ success: true, message: 'User deleted successfully.' });
     }
 
     return NextResponse.json({ success: false, error: 'Invalid admin action.' }, { status: 400 });

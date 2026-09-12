@@ -6,7 +6,10 @@ import { db } from '@/lib/db';
 export async function POST(req: NextRequest) {
   try {
     const user = await getUserFromRequest(req);
-    const userId = user?.id || 'usr_demo_02';
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized. Please sign in.' }, { status: 401 });
+    }
+    const userId = user.id;
 
     const body = await req.json();
     const { urlOrText, targetCountry = 'United States' } = body;

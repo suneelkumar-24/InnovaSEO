@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
 import { SearchOrigin } from '@/lib/providers/types';
@@ -6,7 +6,10 @@ import { SearchOrigin } from '@/lib/providers/types';
 export async function GET(req: NextRequest) {
   try {
     const user = await getUserFromRequest(req);
-    const userId = user ? user.id : undefined;
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized. Please sign in.' }, { status: 401 });
+    }
+    const userId = user.role === 'admin' ? undefined : user.id;
 
     const { searchParams } = new URL(req.url);
     const origin = (searchParams.get('origin') as SearchOrigin | 'all') || 'all';
@@ -36,7 +39,10 @@ export async function GET(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const user = await getUserFromRequest(req);
-    const userId = user ? user.id : undefined;
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized. Please sign in.' }, { status: 401 });
+    }
+    const userId = user.role === 'admin' ? undefined : user.id;
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');

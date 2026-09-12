@@ -443,23 +443,12 @@ function initializeDatabase(): DatabaseSchema {
         email: 'admin@nichehunter.io',
         name: 'Alex Hunter (Admin)',
         role: 'admin',
+        status: 'active',
         passwordHash: defaultAdminPasswordHash,
         createdAt: new Date().toISOString(),
         apiUsageCount: 42,
         credits: 999999,
         dailyCreditsLimit: 999999,
-        lastCreditResetDate: today,
-      },
-      {
-        id: 'usr_demo_02',
-        email: 'user@nichehunter.io',
-        name: 'Sarah Connor',
-        role: 'user',
-        passwordHash: defaultUserPasswordHash,
-        createdAt: new Date().toISOString(),
-        apiUsageCount: 18,
-        credits: 50,
-        dailyCreditsLimit: 50,
         lastCreditResetDate: today,
       },
     ],
@@ -756,7 +745,8 @@ export const db = {
     password: string,
     name: string,
     role: 'admin' | 'user' = 'user',
-    dailyCreditsLimit: number = 50
+    status: 'active' | 'suspended' = 'active',
+    dailyCreditsLimit: number = 999999
   ) => {
     const data = readDb();
     if (data.users.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
@@ -765,16 +755,18 @@ export const db = {
     const salt = bcrypt.genSaltSync(10);
     const passwordHash = bcrypt.hashSync(password, salt);
     const today = new Date().toISOString().slice(0, 10);
+    const limit = typeof dailyCreditsLimit === 'number' && dailyCreditsLimit > 0 ? dailyCreditsLimit : 999999;
     const newUser = {
       id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       email,
       name,
       role,
+      status,
       passwordHash,
       createdAt: new Date().toISOString(),
       apiUsageCount: 0,
-      credits: role === 'admin' ? 999999 : dailyCreditsLimit,
-      dailyCreditsLimit: role === 'admin' ? 999999 : dailyCreditsLimit,
+      credits: limit,
+      dailyCreditsLimit: limit,
       lastCreditResetDate: today,
     };
     data.users.push(newUser);
@@ -804,30 +796,10 @@ export const db = {
     if (!user) {
       return { success: false, remainingCredits: 0, error: 'User account not found.' };
     }
-    // Admins have unlimited credits
-    if (user.role === 'admin') {
-      user.apiUsageCount = (user.apiUsageCount || 0) + 1;
-      writeDb(data);
-      return { success: true, remainingCredits: 999999 };
-    }
-    // Auto-reset daily quota if new day
-    const today = new Date().toISOString().slice(0, 10);
-    if (user.lastCreditResetDate !== today) {
-      user.lastCreditResetDate = today;
-      user.credits = user.dailyCreditsLimit ?? 50;
-    }
-    if ((user.credits ?? 0) < amount) {
-      writeDb(data);
-      return {
-        success: false,
-        remainingCredits: user.credits ?? 0,
-        error: `Daily credit limit reached (0/${user.dailyCreditsLimit ?? 50} credits remaining). Your 50 credits reset daily.`,
-      };
-    }
-    user.credits = (user.credits ?? 50) - amount;
-    user.apiUsageCount = (user.apiUsageCount || 0) + 1;
+    // 100% Free SaaS: unlimited usage and zero charges
+    user.apiUsageCount = (user.apiUsageCount || 0) + amount;
     writeDb(data);
-    return { success: true, remainingCredits: user.credits };
+    return { success: true, remainingCredits: 999999 };
   },
   updateUserCredits: (userId: string, newCredits: number, newDailyLimit?: number) => {
     const data = readDb();
@@ -854,7 +826,15 @@ export const db = {
     writeDb(data);
     return true;
   },
-  updateUser: (userId: string, updates: { name?: string; role?: 'admin' | 'user'; email?: string }) => {
+  updateUser: (
+    userId: string,
+    updates: {
+      name?: string;
+      role?: 'admin' | 'user';
+      email?: string;
+      status?: 'active' | 'suspended';
+    }
+  ) => {
     const data = readDb();
     const user = data.users.find((u) => u.id === userId);
     if (!user) {
@@ -866,8 +846,9 @@ export const db = {
       }
       user.email = updates.email;
     }
-    if (updates.name) user.name = updates.name;
-    if (updates.role) user.role = updates.role;
+    if (updates.name !== undefined) user.name = updates.name;
+    if (updates.role !== undefined) user.role = updates.role;
+    if (updates.status !== undefined) user.status = updates.status;
     writeDb(data);
     const { passwordHash: _, ...safeUser } = user;
     return safeUser;

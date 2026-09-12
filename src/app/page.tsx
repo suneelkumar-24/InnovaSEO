@@ -522,130 +522,101 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 7. PRICING SECTION (Screenshot 7 Style in Purple Theme) */}
+      {/* 7. EARLY ACCESS STATUS (100% Free Beta Phase) */}
       <section className="py-20 px-6 max-w-6xl mx-auto border-t border-slate-200/80">
         <div className="text-center mb-12 space-y-2">
-          <div className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-widest text-purple-600">
-            <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />
-            PRICING
+          <div className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-widest text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            100% FREE EARLY ACCESS BETA
           </div>
           <h2 className="text-3xl sm:text-4xl font-serif font-bold text-slate-900">
-            Plans that grow with your portfolio.
+            Full Pro Suite Unlocked — Zero Charges.
           </h2>
           <p className="text-slate-600 text-sm max-w-lg mx-auto">
-            Start free and upgrade whenever you’re ready. Every plan runs on the same real Google & Moz SERP data.
+            Currently in Private Early Access with zero fees. Admin directly provisions user accounts with email and password.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-stretch">
-          {/* Plan 1: Basic */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+          {/* Feature 1: Core Research */}
           <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between space-y-6">
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-blue-500" />
-                <span className="text-xs font-bold uppercase text-slate-500">BASIC</span>
+                <span className="w-2 h-2 rounded-full bg-purple-500" />
+                <span className="text-xs font-bold uppercase text-purple-700">12-POINT CHECKLIST HUB</span>
               </div>
               <div>
-                <span className="text-3xl font-black text-slate-900">$2.99</span>
-                <span className="text-xs text-slate-500"> / per month</span>
+                <span className="text-3xl font-black text-slate-900">$0</span>
+                <span className="text-xs text-slate-500 font-bold"> / Free Early Access</span>
               </div>
-              <p className="text-xs text-slate-600">For creators exploring their first micro-niches.</p>
+              <p className="text-xs text-slate-600">Complete multi-signal viability scoring and master benchmarks.</p>
               <ul className="space-y-2 text-xs text-slate-600 pt-2 border-t border-slate-100">
-                <li className="flex items-center gap-2">✓ 100 keyword searches / day</li>
-                <li className="flex items-center gap-2">✓ 5 competitors monitored</li>
-                <li className="flex items-center gap-2">✓ 12-Point Checklist Export</li>
+                <li className="flex items-center gap-2">✓ Full 15-Phase Research Engine</li>
+                <li className="flex items-center gap-2">✓ 12-Point Master Checklist & Export</li>
+                <li className="flex items-center gap-2">✓ Dedicated Site 70% Rule Detector</li>
               </ul>
             </div>
             <button
-              onClick={() => router.push('/research/new')}
-              className="w-full py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs transition"
+              onClick={() => router.push('/login')}
+              className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-purple-700 text-white font-bold text-xs transition"
             >
-              Choose Basic
+              Sign In to Workspace →
             </button>
           </div>
 
-          {/* Plan 2: Pro (MOST POPULAR in Purple) */}
+          {/* Feature 2: Pro Suite (Highlighted) */}
           <div className="bg-[#18181b] text-white rounded-3xl p-6 border-2 border-purple-500 shadow-2xl flex flex-col justify-between space-y-6 relative transform md:-translate-y-2">
-            <div className="absolute -top-3 right-6 px-3 py-0.5 rounded-full bg-purple-600 text-white text-[10px] font-bold uppercase tracking-wider">
-              MOST POPULAR
+            <div className="absolute -top-3 right-6 px-3 py-0.5 rounded-full bg-emerald-500 text-slate-950 text-[10px] font-bold uppercase tracking-wider">
+              ALL UNLOCKED
             </div>
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-purple-400" />
-                <span className="text-xs font-bold uppercase text-purple-300">PRO</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span className="text-xs font-bold uppercase text-emerald-400">PRO INTELLIGENCE SUITE</span>
               </div>
               <div>
-                <span className="text-3xl font-black text-white">$6.99</span>
-                <span className="text-xs text-slate-400"> / per month</span>
+                <span className="text-3xl font-black text-white">$0</span>
+                <span className="text-xs text-slate-400 font-bold"> / All Features Free</span>
               </div>
-              <p className="text-xs text-slate-300">Everything to discover and reverse-engineer profitable niches.</p>
+              <p className="text-xs text-slate-300">Live SERP audits, DR 0-5 anomalies, and monetization blueprints.</p>
               <ul className="space-y-2 text-xs text-slate-300 pt-2 border-t border-slate-800">
-                <li className="flex items-center gap-2">✓ Unlimited 15-Phase Research</li>
-                <li className="flex items-center gap-2">✓ Flippa Reverse Engineering</li>
-                <li className="flex items-center gap-2">✓ 70% Dedicated Site Audits</li>
-                <li className="flex items-center gap-2">✓ Zero AI Overview Detector</li>
-                <li className="flex items-center gap-2">✓ Excel & PDF Export Suite</li>
+                <li className="flex items-center gap-2">✓ DR 0-5 / 0-20 SERP Anomalies Hunter</li>
+                <li className="flex items-center gap-2">✓ Flippa & Empire Flippers Reverse Blueprints</li>
+                <li className="flex items-center gap-2">✓ Zero AI Overview Detector & RPM Models</li>
+                <li className="flex items-center gap-2">✓ Programmatic DB & Silo Roadmap Builder</li>
               </ul>
             </div>
             <button
-              onClick={() => router.push('/research/new')}
+              onClick={() => router.push('/login')}
               className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg shadow-purple-600/30 transition"
             >
-              Choose Pro
+              Access Pro Workspace →
             </button>
           </div>
 
-          {/* Plan 3: Pro 1-Year (BEST VALUE) */}
-          <div className="bg-white rounded-3xl p-6 border border-purple-300 shadow-md flex flex-col justify-between space-y-6">
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-amber-500" />
-                <span className="text-xs font-bold uppercase text-amber-600">PRO · 1-YEAR</span>
-              </div>
-              <div>
-                <span className="text-3xl font-black text-slate-900">$99.99</span>
-                <span className="text-xs text-slate-500"> / per year</span>
-              </div>
-              <span className="text-[11px] font-bold text-purple-600 block">≈ $7.50 / mo · best value</span>
-              <p className="text-xs text-slate-600">All of Pro for a full year with priority AI API credits.</p>
-              <ul className="space-y-2 text-xs text-slate-600 pt-2 border-t border-slate-100">
-                <li className="flex items-center gap-2">✓ Everything in Pro</li>
-                <li className="flex items-center gap-2">✓ 1,000 research credits / mo</li>
-                <li className="flex items-center gap-2">✓ Priority live SERP scraping</li>
-                <li className="flex items-center gap-2">✓ Locked-in 1-year price</li>
-              </ul>
-            </div>
-            <button
-              onClick={() => setShowPricingModal(true)}
-              className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs transition"
-            >
-              Get 1-Year Pro
-            </button>
-          </div>
-
-          {/* Plan 4: Business */}
+          {/* Feature 3: Provisioned User Accounts */}
           <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between space-y-6">
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span className="text-xs font-bold uppercase text-slate-500">BUSINESS</span>
+                <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                <span className="text-xs font-bold uppercase text-indigo-700">ADMIN-PROVISIONED SEATS</span>
               </div>
               <div>
-                <span className="text-3xl font-black text-slate-900">$19.99</span>
-                <span className="text-xs text-slate-500"> / per month</span>
+                <span className="text-3xl font-black text-slate-900">Custom</span>
+                <span className="text-xs text-slate-500"> / Admin Managed</span>
               </div>
-              <p className="text-xs text-slate-600">For programmatic publishers & agency teams.</p>
+              <p className="text-xs text-slate-600">Admin provisions unique login credentials for clients & team members.</p>
               <ul className="space-y-2 text-xs text-slate-600 pt-2 border-t border-slate-100">
-                <li className="flex items-center gap-2">✓ Full Agency & API Access</li>
-                <li className="flex items-center gap-2">✓ White-label PDF reporting</li>
-                <li className="flex items-center gap-2">✓ Multi-user seats</li>
+                <li className="flex items-center gap-2">✓ Admin assigns email & password</li>
+                <li className="flex items-center gap-2">✓ 1-Click credentials sharing</li>
+                <li className="flex items-center gap-2">✓ Password reset & quota tracking</li>
               </ul>
             </div>
             <button
-              onClick={() => router.push('/research/new')}
-              className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition"
+              onClick={() => router.push('/login')}
+              className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition"
             >
-              Choose Business
+              Client Login Portal →
             </button>
           </div>
         </div>

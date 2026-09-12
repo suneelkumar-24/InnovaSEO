@@ -6,8 +6,10 @@ import { SavedNicheStatus } from '@/lib/providers/types';
 export async function GET(req: NextRequest) {
   try {
     const user = await getUserFromRequest(req);
-    const userId = user?.id;
-    const saved = db.getSavedNiches(userId);
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized. Please log in.' }, { status: 401 });
+    }
+    const saved = user.role === 'admin' ? db.getSavedNiches() : db.getSavedNiches(user.id);
     return NextResponse.json({ success: true, saved });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -17,7 +19,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const user = await getUserFromRequest(req);
-    const userId = user?.id || 'usr_demo_02';
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Please log in to save niches.' }, { status: 401 });
+    }
+    const userId = user.id;
     const body = await req.json();
 
     const { id, researchId, nicheName, seedKeyword, targetCountry, viabilityScore, verdict, status, tags, notes, pinned } = body;

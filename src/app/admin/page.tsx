@@ -24,6 +24,8 @@ import {
   Lock,
   Mail,
   User as UserIcon,
+  Pencil,
+  UserCheck,
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -50,8 +52,18 @@ export default function AdminPage() {
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserRole, setNewUserRole] = useState<'user' | 'admin'>('user');
+  const [newUserStatus, setNewUserStatus] = useState<'active' | 'suspended'>('active');
   const [creatingUser, setCreatingUser] = useState(false);
   const [createUserError, setCreateUserError] = useState<string | null>(null);
+
+  // Edit User Modal State
+  const [editModalUser, setEditModalUser] = useState<any | null>(null);
+  const [editUserName, setEditUserName] = useState('');
+  const [editUserEmail, setEditUserEmail] = useState('');
+  const [editUserRole, setEditUserRole] = useState<'user' | 'admin'>('user');
+  const [editUserStatus, setEditUserStatus] = useState<'active' | 'suspended'>('active');
+  const [updatingUser, setUpdatingUser] = useState(false);
+  const [editUserError, setEditUserError] = useState<string | null>(null);
 
   // Success Credentials Card State (for 1-click clipboard copy)
   const [credentialsModal, setCredentialsModal] = useState<{
@@ -114,6 +126,7 @@ export default function AdminPage() {
           email: newUserEmail.trim(),
           password: newUserPassword,
           role: newUserRole,
+          status: newUserStatus,
         }),
       });
       const data = await res.json();
@@ -138,6 +151,39 @@ export default function AdminPage() {
       setCreateUserError(err.message);
     } finally {
       setCreatingUser(false);
+    }
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editModalUser) return;
+    setUpdatingUser(true);
+    setEditUserError(null);
+    try {
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_user',
+          userId: editModalUser.id,
+          name: editUserName.trim(),
+          email: editUserEmail.trim(),
+          role: editUserRole,
+          status: editUserStatus,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to update user account');
+      }
+
+      setActionNotice(`User account ${editUserEmail} updated successfully.`);
+      setEditModalUser(null);
+      fetchAdminData();
+    } catch (err: any) {
+      setEditUserError(err.message);
+    } finally {
+      setUpdatingUser(false);
     }
   };
 
@@ -442,7 +488,8 @@ Welcome aboard! Please keep your login credentials secure.`;
                   <tr>
                     <th className="py-3.5 px-5">Name & Email</th>
                     <th className="py-3.5 px-4">Role</th>
-                    <th className="py-3.5 px-4">Plan Status</th>
+                    <th className="py-3.5 px-4">Account Status</th>
+                    <th className="py-3.5 px-4">Pricing Plan</th>
                     <th className="py-3.5 px-4 text-center">Research Runs</th>
                     <th className="py-3.5 px-4">Joined Date</th>
                     <th className="py-3.5 px-5 text-right">Actions</th>
@@ -474,8 +521,21 @@ Welcome aboard! Please keep your login credentials secure.`;
                         </span>
                       </td>
                       <td className="py-3.5 px-4">
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          100% Free Early Access
+                        {u.status === 'suspended' ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 inline-flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                            Suspended
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            Active
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                          100% Free (No Charges)
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-center font-bold text-purple-700">
@@ -486,6 +546,22 @@ Welcome aboard! Please keep your login credentials secure.`;
                       </td>
                       <td className="py-3.5 px-5 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          {/* Edit User Button */}
+                          <button
+                            onClick={() => {
+                              setEditModalUser(u);
+                              setEditUserName(u.name || '');
+                              setEditUserEmail(u.email || '');
+                              setEditUserRole(u.role || 'user');
+                              setEditUserStatus(u.status || 'active');
+                              setEditUserError(null);
+                            }}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-700 hover:bg-indigo-50 transition"
+                            title="Edit User Profile & Status"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+
                           {/* Reset Password Button */}
                           <button
                             onClick={() => {

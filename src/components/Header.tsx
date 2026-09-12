@@ -206,6 +206,18 @@ export default function Header({
         <div className="flex items-center gap-2.5">
           {children}
 
+          {/* User Credits Badge */}
+          {user && (
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-50 border border-purple-200/90 text-purple-900 font-bold text-xs shadow-xs">
+              <Zap className="w-3.5 h-3.5 text-purple-600 fill-purple-600" />
+              <span>
+                {isAdmin
+                  ? 'Admin (Unlimited)'
+                  : `${user.credits ?? 50} / ${user.dailyCreditsLimit ?? 50} Daily Credits`}
+              </span>
+            </div>
+          )}
+
           {/* User Profile Pill & Dropdown */}
           {user ? (
             <div className="relative">
@@ -245,9 +257,9 @@ export default function Header({
                       <p className="font-bold text-slate-900 truncate">{user.name}</p>
                       <p className="text-slate-500 text-[11px] truncate">{user.email}</p>
                       <div className="pt-1 flex items-center justify-between">
-                        <span className="text-[10px] uppercase font-bold text-slate-400">Plan Status</span>
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                          100% Free Early Access
+                        <span className="text-[10px] uppercase font-bold text-slate-400">Daily Credits</span>
+                        <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                          {isAdmin ? 'Unlimited' : `${user.credits ?? 50} / ${user.dailyCreditsLimit ?? 50}`}
                         </span>
                       </div>
                     </div>

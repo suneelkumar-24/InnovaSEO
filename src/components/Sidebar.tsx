@@ -143,7 +143,7 @@ export default function Sidebar() {
                 {user?.name || 'Authorized Member'}
               </p>
               <p className="text-[10px] text-purple-600 font-bold uppercase truncate">
-                {isAdmin ? 'Admin' : '100% Free Pro'}
+                {isAdmin ? 'Admin' : `${user?.credits ?? 50} Cr · ${user?.remainingMinutes ?? 75}m left`}
               </p>
             </div>
           </div>

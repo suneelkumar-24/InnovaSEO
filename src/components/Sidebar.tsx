@@ -20,17 +20,18 @@ import {
   History,
 } from 'lucide-react';
 import { useLivePulse } from './LivePulseProvider';
+import { useAuth } from './AuthProvider';
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { isRecalculating, pulseCountdown, autoSyncEnabled } = useLivePulse();
+  const { user, isAdmin, logout } = useAuth();
 
   // Hide sidebar on public landing page and login page for full-width layout
   if (pathname === '/' || pathname === '/login') {
     return null;
   }
-
 
   const navItems = [
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -40,21 +41,11 @@ export default function Sidebar() {
     { label: 'Saved Vault', href: '/saved', icon: Bookmark },
     { label: 'Compare Niches', href: '/compare', icon: GitCompare },
     { label: 'Settings & APIs', href: '/settings', icon: Settings },
-    { label: 'Admin Control', href: '/admin', icon: ShieldCheck },
+    ...(isAdmin ? [{ label: 'Admin Control', href: '/admin', icon: ShieldCheck }] : []),
   ];
 
   const handleLogout = async () => {
-    try {
-      await fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'logout' }),
-      });
-      router.push('/login');
-      router.refresh();
-    } catch (e) {
-      router.push('/login');
-    }
+    await logout();
   };
 
   return (
@@ -143,19 +134,23 @@ export default function Sidebar() {
 
         {/* User profile & Logout */}
         <div className="flex items-center justify-between px-2 pt-1">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-purple-600 text-white font-bold text-xs flex items-center justify-center shadow-sm">
-              U
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-purple-600 text-white font-bold text-xs flex items-center justify-center shadow-sm shrink-0">
+              {user?.name ? user.name.slice(0, 1).toUpperCase() : 'U'}
             </div>
-            <div className="text-left">
-              <p className="text-sm font-bold text-slate-800 leading-tight">Pro Member</p>
-              <p className="text-xs text-slate-400">Tier 1 Pro Access</p>
+            <div className="text-left min-w-0">
+              <p className="text-xs font-bold text-slate-800 leading-tight truncate">
+                {user?.name || 'Authorized Member'}
+              </p>
+              <p className="text-[10px] text-purple-600 font-bold uppercase truncate">
+                {isAdmin ? 'Admin' : '100% Free Pro'}
+              </p>
             </div>
           </div>
           <button
             onClick={handleLogout}
             title="Sign Out"
-            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition"
+            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition shrink-0"
           >
             <LogOut className="w-4 h-4" />
           </button>

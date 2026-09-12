@@ -12,17 +12,16 @@ export default function AuthLayoutWrapper({ children }: { children: React.ReactN
   const pathname = usePathname();
   const router = useRouter();
 
-  const isLoginPage = pathname === '/login';
+  const isPublicPage = pathname === '/' || pathname === '/login';
 
   useEffect(() => {
-    if (!loading && !user && !isLoginPage) {
-      const redirectParam = pathname === '/' ? '' : `?redirect=${encodeURIComponent(pathname)}`;
-      router.replace(`/login${redirectParam}`);
+    if (!loading && !user && !isPublicPage) {
+      router.replace('/');
     }
-  }, [loading, user, isLoginPage, pathname, router]);
+  }, [loading, user, isPublicPage, router]);
 
-  // 1. If currently on Login page, render only the login view without sidebar
-  if (isLoginPage) {
+  // 1. If currently on Landing page or Login page, render directly without workspace sidebar
+  if (isPublicPage) {
     return (
       <div className="flex-1 flex flex-col min-w-0 min-h-screen bg-[#faf9f6]">
         {children}
@@ -30,7 +29,7 @@ export default function AuthLayoutWrapper({ children }: { children: React.ReactN
     );
   }
 
-  // 2. While verifying authentication, block ALL dashboard/tool views and sidebars
+  // 2. While verifying authentication on protected pages
   if (loading) {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#faf9f6] text-slate-700">
@@ -41,19 +40,19 @@ export default function AuthLayoutWrapper({ children }: { children: React.ReactN
         </div>
         <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
           <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
-          <span>Verifying authorized workspace access...</span>
+          <span>Loading Niche Hunter...</span>
         </div>
       </div>
     );
   }
 
-  // 3. If finished loading and still no user, DO NOT render dashboard or sidebar!
+  // 3. If finished loading and still no user on protected page, redirect to landing page
   if (!user) {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#faf9f6] text-slate-700">
         <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
           <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
-          <span>Unauthorized. Redirecting to workspace login...</span>
+          <span>Redirecting to landing page...</span>
         </div>
       </div>
     );

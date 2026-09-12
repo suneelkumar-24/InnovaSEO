@@ -113,7 +113,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 4. Handle Login Page (PUBLIC)
+  // 4. Handle Root Landing Page (PUBLIC)
+  if (pathname === '/' || pathname === '') {
+    return NextResponse.next();
+  }
+
+  // 5. Handle Login Page (PUBLIC)
   if (pathname === '/login') {
     // If user already has a valid token and did not explicitly request account switch, send to dashboard
     if (validToken && !request.nextUrl.searchParams.has('switch')) {
@@ -122,23 +127,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 5. Handle Root Page (/)
-  if (pathname === '/' || pathname === '') {
-    if (validToken) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
-
-  // 6. Protected routes (like /dashboard, /research, /saved, etc.):
-  // If user is NOT authenticated, redirect to /login immediately
+  // 6. Protected routes (like /dashboard, /research, /saved, /admin, etc.):
+  // If user is NOT authenticated, redirect seedha to landing page (/)
   if (!validToken) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    const response = NextResponse.redirect(loginUrl);
+    const response = NextResponse.redirect(new URL('/', request.url));
     response.headers.set('Cache-Control', 'no-store, max-age=0');
-    response.cookies.delete(TOKEN_NAME);
-    response.cookies.set(TOKEN_NAME, '', { path: '/', maxAge: 0 });
+    if (token) {
+      response.cookies.delete(TOKEN_NAME);
+      response.cookies.set(TOKEN_NAME, '', { path: '/', maxAge: 0 });
+    }
     return response;
   }
 

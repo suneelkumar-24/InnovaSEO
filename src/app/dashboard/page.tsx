@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import { useLivePulse } from '@/components/LivePulseProvider';
+import { useAuth } from '@/components/AuthProvider';
 import {
   Target,
   Bookmark,
@@ -24,8 +25,11 @@ import {
   Clock,
 } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 export default function DashboardPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const { isRecalculating, lastPulseTime, autoSyncEnabled, pulseCountdown, triggerRecalculateNow } =
     useLivePulse();
 
@@ -33,11 +37,23 @@ export default function DashboardPage() {
   const [savedNiches, setSavedNiches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Redirect immediately to landing page if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) {
+      if (typeof window !== 'undefined') {
+        window.location.replace('/');
+      } else {
+        router.replace('/');
+      }
+    }
+  }, [authLoading, user, router]);
+
   const fetchDashboardData = async () => {
+    if (!user) return;
     try {
       const [resRes, resSaved] = await Promise.all([
-        fetch('/api/research').catch(() => null),
-        fetch('/api/saved').catch(() => null),
+        fetch('/api/research', { cache: 'no-store' }).catch(() => null),
+        fetch('/api/saved', { cache: 'no-store' }).catch(() => null),
       ]);
       if (resRes && resRes.ok && (resRes.headers.get('content-type') || '').includes('application/json')) {
         const dataRes = await resRes.json();
@@ -55,15 +71,30 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    if (user) {
+      fetchDashboardData();
+    }
+  }, [user]);
 
   // When live pulse triggers in background, refresh dashboard numbers
   useEffect(() => {
-    if (lastPulseTime) {
+    if (lastPulseTime && user) {
       fetchDashboardData();
     }
-  }, [lastPulseTime]);
+  }, [lastPulseTime, user]);
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-[#faf9f6]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-3 border-purple-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs font-bold text-slate-500 tracking-wider uppercase">
+            Verifying Authorization...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const handleDeleteResearch = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();

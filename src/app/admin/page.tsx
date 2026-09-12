@@ -234,7 +234,7 @@ export default function AdminPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setActionNotice(`Account ${email} APPROVED! 50 credits (75 active mins/day) allocated.`);
+        setActionNotice(`Account ${email} APPROVED! 50 credits allocated.`);
         fetchAdminData();
       } else {
         alert(data.error || 'Failed to approve user account.');
@@ -443,7 +443,7 @@ Please log in and keep your password secure.`;
             <span className="text-[10px] uppercase font-bold text-slate-400 block">Standard Members</span>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl font-serif font-bold text-purple-700">{stats.standardUsers}</span>
-              <span className="text-xs font-semibold text-slate-500">75m Daily</span>
+              <span className="text-xs font-semibold text-slate-500">50 Credits/Day</span>
             </div>
           </div>
 
@@ -468,7 +468,7 @@ Please log in and keep your password secure.`;
                   {stats.pendingApprovals} Registration Request{stats.pendingApprovals > 1 ? 's' : ''} Awaiting Admin Approval
                 </p>
                 <p className="text-[11px] text-amber-800">
-                  New users cannot log in until approved. Approving will automatically grant them 50 credits (75 active mins per day).
+                  New users cannot log in until approved. Approving will automatically grant them 50 daily credits.
                 </p>
               </div>
             </div>
@@ -503,7 +503,7 @@ Please log in and keep your password secure.`;
                 <span>User Accounts & Authentication Management</span>
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Admin adds users with password. Each user gets 50 daily credits (75 active mins) and a private, isolated workspace.
+                Admin adds users with password. Each user gets 50 daily credits and a private, isolated workspace.
               </p>
             </div>
 
@@ -659,7 +659,7 @@ Please log in and keep your password secure.`;
                         ) : (
                           <span>
                             <strong className="text-purple-700 font-bold">{u.credits ?? 50} Cr</strong>
-                            <span className="text-slate-400 text-[11px] block">{u.remainingMinutes ?? 75}m daily time</span>
+                            <span className="text-slate-400 text-[11px] block">{u.credits ?? 50} / {u.dailyCreditsLimit ?? 50} Credits</span>
                           </span>
                         )}
                       </td>
@@ -675,7 +675,7 @@ Please log in and keep your password secure.`;
                             <button
                               onClick={() => handleApproveUser(u.id, u.email)}
                               className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-xs transition active:scale-95"
-                              title="Approve User Account (50 Credits / 75m active daily time)"
+                              title="Approve User Account (50 Daily Credits)"
                             >
                               <Check className="w-3.5 h-3.5 stroke-[2.5]" />
                               <span>Approve</span>

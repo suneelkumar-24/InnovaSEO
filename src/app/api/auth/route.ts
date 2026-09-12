@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
         userId: user.id,
         level: 'info',
         module: 'Auth',
-        message: `User logged in: ${user.email} (Remaining: ${safeUser.remainingMinutes}m, ${safeUser.credits} credits)`,
+        message: `User logged in: ${user.email} (Credits: ${safeUser.credits})`,
       });
 
       return response;

@@ -879,7 +879,7 @@ export const db = {
         allowed: false,
         credits: 0,
         remainingMinutes: 0,
-        error: 'Daily usage limit reached (75 minutes / 50 credits used). Your 75-minute quota resets automatically at midnight.',
+        error: 'Daily credit limit reached (50 credits used). Your daily credits reset automatically at midnight.',
       };
     }
 

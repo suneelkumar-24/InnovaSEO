@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { User } from '@/lib/providers/types';
 
@@ -24,6 +24,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState<boolean>(true);
   const router = useRouter();
   const pathname = usePathname();
+  const lastActivityRef = useRef<number>(Date.now());
+
+  // Listen to user interaction (mouse, key, scroll, touch) to track active usage vs idle time
+  useEffect(() => {
+    const handleActivity = () => {
+      lastActivityRef.current = Date.now();
+    };
+
+    const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+    events.forEach((evt) => window.addEventListener(evt, handleActivity, { passive: true }));
+
+    return () => {
+      events.forEach((evt) => window.removeEventListener(evt, handleActivity));
+    };
+  }, []);
 
   const fetchCurrentUser = useCallback(async () => {
     try {
@@ -53,27 +68,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchCurrentUser();
   }, [fetchCurrentUser]);
 
-  const isPublicPage = pathname === '/' || pathname === '/login';
-
-  // Client-side guard: Protected pages require login, public pages (/ and /login) are accessible
+  // Client-side guard: Without login, no one can access any page
   useEffect(() => {
-    if (!loading && !user && !isPublicPage) {
-      const redirectParam = `?redirect=${encodeURIComponent(pathname)}`;
+    if (!loading && !user && pathname !== '/login') {
+      const redirectParam = pathname === '/' ? '' : `?redirect=${encodeURIComponent(pathname)}`;
       if (typeof window !== 'undefined') {
         window.location.replace(`/login${redirectParam}`);
       } else {
         router.replace(`/login${redirectParam}`);
       }
     }
-  }, [loading, user, pathname, router, isPublicPage]);
+  }, [loading, user, pathname, router]);
 
-  // Active Heartbeat Timer: 50 credits = 75 active minutes/day
+  // Active Heartbeat Timer: Tracks active platform usage and proportionally updates credits
   useEffect(() => {
     if (!user || user.role === 'admin') return;
 
     const interval = setInterval(async () => {
-      // Only track if tab/window is actively visible to the user
+      // 1. Only track if tab/window is actively visible
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return;
+      }
+
+      // 2. Only track if user had activity in the last 60 seconds (prevents deductions if user stepped away)
+      const idleDuration = Date.now() - lastActivityRef.current;
+      if (idleDuration > 60000) {
         return;
       }
 
@@ -195,6 +214,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     : 0;
   const quotaExhausted = Boolean(user && user.role !== 'admin' && credits <= 0);
 
+  // Protect all non-login routes from rendering to unauthenticated users
+  const isLoginPage = pathname === '/login';
+
   return (
     <AuthContext.Provider
       value={{
@@ -210,7 +232,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         refreshUser: fetchCurrentUser,
       }}
     >
-      {isPublicPage ? (
+      {isLoginPage ? (
         children
       ) : loading ? (
         <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-[#faf9f6]">

@@ -219,7 +219,7 @@ export default function Header({
               <span>
                 {isAdmin
                   ? 'Admin (Unlimited)'
-                  : `${user.credits ?? 50} Credits · ${user.remainingMinutes ?? 75}m left`}
+                  : `${user.credits ?? 50} Credits`}
               </span>
             </div>
           )}
@@ -265,7 +265,7 @@ export default function Header({
                       <div className="pt-1 flex items-center justify-between">
                         <span className="text-[10px] uppercase font-bold text-slate-400">Daily Quota</span>
                         <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
-                          {isAdmin ? 'Unlimited' : `${user.credits ?? 50} Cr · ${user.remainingMinutes ?? 75}m left`}
+                          {isAdmin ? 'Unlimited' : `${user.credits ?? 50} Credits`}
                         </span>
                       </div>
                     </div>

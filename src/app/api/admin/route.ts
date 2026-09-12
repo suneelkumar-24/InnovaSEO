@@ -146,11 +146,11 @@ export async function POST(req: NextRequest) {
         userId: currentAdmin.id,
         level: 'info',
         module: 'Admin',
-        message: `Admin (${currentAdmin.email}) APPROVED registration request for: ${approvedUser.email} (Assigned 50 credits = 75 mins/day)`,
+        message: `Admin (${currentAdmin.email}) APPROVED registration request for: ${approvedUser.email} (Assigned 50 credits/day)`,
       });
       return NextResponse.json({
         success: true,
-        message: `User ${approvedUser.email} has been approved and activated with 50 credits (75 mins/day).`,
+        message: `User ${approvedUser.email} has been approved and activated with 50 credits.`,
         user: approvedUser,
       });
     }

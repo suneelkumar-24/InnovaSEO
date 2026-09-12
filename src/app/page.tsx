@@ -71,7 +71,7 @@ export default function HomePage() {
       {/* 1. TOP NOTIFICATION BAR */}
       <div className="bg-[#18181b] text-slate-300 text-xs py-2 px-4 text-center font-medium flex items-center justify-center gap-2 border-b border-slate-800">
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-        <span>🚀 100% Free Early Access Beta — 50 Credits (75 Mins Daily Usage) with zero charges.</span>
+        <span>🚀 100% Free Early Access Beta — 50 Free Daily Credits with zero charges.</span>
         <button
           onClick={() => setShowPricingModal(true)}
           className="text-purple-400 hover:text-purple-300 font-bold underline ml-1"

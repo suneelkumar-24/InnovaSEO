@@ -417,7 +417,7 @@ export default function DualSidebar() {
                 <div className="pt-1 border-t border-slate-100 flex items-center justify-between text-[10px]">
                   <span className="text-slate-500 font-medium">Daily Quota:</span>
                   <span className="font-bold text-purple-700 font-mono">
-                    {isAdmin ? 'Unlimited' : `${user.credits ?? 50} Cr · ${user.remainingMinutes ?? 75}m left`}
+                    {isAdmin ? 'Unlimited' : `${user.credits ?? 50} Credits`}
                   </span>
                 </div>
               </div>

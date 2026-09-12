@@ -105,7 +105,7 @@ function AuthForm() {
       }
 
       setPendingSuccess(
-        'Your registration request has been submitted! An administrator will review and approve your account before you can log in. You will receive 50 daily credits (75 minutes of usage).'
+        'Your registration request has been submitted! An administrator will review and approve your account before you can log in. You will receive 50 daily credits upon approval.'
       );
       setEmail(cleanEmail);
       setTab('login');
@@ -135,7 +135,7 @@ function AuthForm() {
           niche<span className="text-purple-600">hunter</span>
         </h1>
         <p className="text-xs sm:text-sm text-slate-500">
-          SEO & Micro-Niche Discovery Platform · 50 Credits (75 Mins Daily)
+          SEO & Micro-Niche Discovery Platform · 50 Daily Credits
         </p>
       </div>
 
@@ -279,7 +279,7 @@ function AuthForm() {
         {tab === 'register' && (
           <form onSubmit={handleRegisterSubmit} className="space-y-4">
             <div className="p-3 rounded-2xl bg-purple-50/70 border border-purple-100 text-[11px] text-purple-950 leading-relaxed">
-              🔒 <strong>Admin-Approval Required:</strong> Once you submit, your account will be placed in the admin review queue. Upon approval, you get <strong>50 credits = 75 minutes</strong> of free daily research time.
+              🔒 <strong>Admin-Approval Required:</strong> Once you submit, your account will be placed in the admin review queue. Upon approval, you get <strong>50 free daily credits</strong> for your research.
             </div>
 
             <div>
@@ -362,10 +362,10 @@ function AuthForm() {
         <div className="p-3 rounded-2xl bg-purple-50/60 border border-purple-100/80 text-[11px] text-purple-900 leading-relaxed space-y-1">
           <p className="font-bold flex items-center gap-1.5 text-purple-950">
             <CheckCircle2 className="w-3.5 h-3.5 text-purple-700" />
-            <span>Daily Free Quota: 50 Credits (75 Minutes)</span>
+            <span>Daily Free Quota: 50 Credits</span>
           </p>
           <p className="text-slate-600">
-            Each approved user receives 50 credits per day (equivalent to 75 minutes of active platform usage). Credits decrease as you spend time using the platform and reset daily.
+            Each approved user receives 50 credits per day. Credits decrease as you actively use the platform and reset daily.
           </p>
         </div>
       </div>

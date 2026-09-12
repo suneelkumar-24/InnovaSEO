@@ -37,13 +37,13 @@ export default function DashboardPage() {
   const [savedNiches, setSavedNiches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Redirect immediately to landing page if not logged in
+  // Redirect immediately to login if not logged in
   useEffect(() => {
     if (!authLoading && !user) {
       if (typeof window !== 'undefined') {
-        window.location.replace('/');
+        window.location.replace('/login?redirect=/dashboard');
       } else {
-        router.replace('/');
+        router.replace('/login?redirect=/dashboard');
       }
     }
   }, [authLoading, user, router]);

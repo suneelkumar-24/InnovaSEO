@@ -16,9 +16,9 @@ export default function AuthLayoutWrapper({ children }: { children: React.ReactN
 
   useEffect(() => {
     if (!loading && !user && !isPublicPage) {
-      router.replace('/');
+      router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
     }
-  }, [loading, user, isPublicPage, router]);
+  }, [loading, user, isPublicPage, pathname, router]);
 
   // 1. If currently on Landing page or Login page, render directly without workspace sidebar
   if (isPublicPage) {
@@ -46,13 +46,13 @@ export default function AuthLayoutWrapper({ children }: { children: React.ReactN
     );
   }
 
-  // 3. If finished loading and still no user on protected page, redirect to landing page
+  // 3. If finished loading and still no user on protected page, redirect to login
   if (!user) {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#faf9f6] text-slate-700">
         <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
           <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
-          <span>Redirecting to landing page...</span>
+          <span>Redirecting to login...</span>
         </div>
       </div>
     );

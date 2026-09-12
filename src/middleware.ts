@@ -128,9 +128,11 @@ export async function middleware(request: NextRequest) {
   }
 
   // 6. Protected routes (like /dashboard, /research, /saved, /admin, etc.):
-  // If user is NOT authenticated, redirect seedha to landing page (/)
+  // If user is NOT authenticated, redirect to /login
   if (!validToken) {
-    const response = NextResponse.redirect(new URL('/', request.url));
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    const response = NextResponse.redirect(loginUrl);
     response.headers.set('Cache-Control', 'no-store, max-age=0');
     if (token) {
       response.cookies.delete(TOKEN_NAME);

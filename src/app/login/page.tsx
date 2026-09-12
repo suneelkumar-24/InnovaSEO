@@ -21,24 +21,31 @@ function AuthForm() {
   const redirectTarget = searchParams.get('redirect') || '/dashboard';
 
   const { login } = useAuth();
+  const [tab, setTab] = useState<'login' | 'register'>('login');
+
+  // Login form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // Register / Request Access state
+  const [regName, setRegName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regReason, setRegReason] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingSuccess, setPendingSuccess] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setPendingSuccess(null);
 
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail || !password) {
       setError('Please provide your email and password.');
-      return;
-    }
-
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long.');
       return;
     }
 
@@ -60,6 +67,58 @@ function AuthForm() {
     }
   };
 
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setPendingSuccess(null);
+
+    const cleanEmail = regEmail.trim().toLowerCase();
+    if (!cleanEmail || !regPassword || !regName.trim()) {
+      setError('Full name, email, and password are required.');
+      return;
+    }
+
+    if (regPassword.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'register',
+          name: regName.trim(),
+          email: cleanEmail,
+          password: regPassword,
+          reason: regReason.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to submit registration request.');
+      }
+
+      setPendingSuccess(
+        'Your registration request has been submitted! An administrator will review and approve your account before you can log in. You will receive 50 daily credits (75 minutes of usage).'
+      );
+      setEmail(cleanEmail);
+      setTab('login');
+      setRegName('');
+      setRegEmail('');
+      setRegPassword('');
+      setRegReason('');
+    } catch (err: any) {
+      setError(err.message || 'Failed to submit request.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-md w-full space-y-6 relative z-10">
       {/* Brand Header */}
@@ -75,117 +134,243 @@ function AuthForm() {
           niche<span className="text-purple-600">hunter</span>
         </h1>
         <p className="text-xs sm:text-sm text-slate-500">
-          Sign in to your private SEO intelligence workspace
+          SEO & Micro-Niche Discovery Platform · 50 Credits (75 Mins Daily)
         </p>
       </div>
 
       {/* Auth Card */}
       <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl text-slate-800">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center">
-              <Lock className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-sm font-serif font-bold text-slate-900">Workspace Sign In</h2>
-              <p className="text-[11px] text-slate-500">Enter your administrator-assigned credentials</p>
-            </div>
-          </div>
-          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
-            Private Access
-          </span>
+        {/* Switcher Tabs: Sign In vs Request Access */}
+        <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-2xl text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => {
+              setTab('login');
+              setError(null);
+            }}
+            className={`py-2 rounded-xl transition ${
+              tab === 'login'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setTab('register');
+              setError(null);
+              setPendingSuccess(null);
+            }}
+            className={`py-2 rounded-xl transition flex items-center justify-center gap-1 ${
+              tab === 'register'
+                ? 'bg-white text-purple-700 shadow-xs'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <span>Request Access</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-pulse" />
+          </button>
         </div>
 
-        {error && (
-          <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-            <span>{error}</span>
+        {/* Success Alert */}
+        {pendingSuccess && (
+          <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-start gap-2.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <span className="leading-relaxed font-medium">{pendingSuccess}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-xs font-bold text-slate-700 block mb-1.5">
-              Email Address
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="email"
-                required
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@example.com"
-                className="w-full pl-10 pr-4 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
-              />
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold text-slate-700">Password</label>
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="text-[11px] text-purple-600 hover:text-purple-700 flex items-center gap-1 font-medium"
-              >
-                {showPassword ? (
-                  <>
-                    <EyeOff className="w-3 h-3" />
-                    <span>Hide</span>
-                  </>
-                ) : (
-                  <>
-                    <Eye className="w-3 h-3" />
-                    <span>Show</span>
-                  </>
-                )}
-              </button>
-            </div>
-            <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••••••"
-                className="w-full pl-10 pr-10 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3.5 rounded-full bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20 transition disabled:opacity-50"
+        {/* Error Alert */}
+        {error && (
+          <div
+            className={`p-3.5 rounded-2xl border text-xs flex items-start gap-2.5 ${
+              error.toLowerCase().includes('pending')
+                ? 'bg-amber-50 border-amber-200 text-amber-900'
+                : 'bg-rose-50 border-rose-200 text-rose-800'
+            }`}
           >
-            <span>{loading ? 'Signing in...' : 'Sign In to Workspace'}</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </form>
+            <AlertTriangle
+              className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
+                error.toLowerCase().includes('pending') ? 'text-amber-600' : 'text-rose-600'
+              }`}
+            />
+            <div className="space-y-1">
+              <span className="font-semibold">{error}</span>
+              {error.toLowerCase().includes('pending') && (
+                <p className="text-[11px] text-amber-800">
+                  Admin approval is required for all new accounts. Please contact your workspace administrator for approval.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
-        {/* Notice explaining Admin Provisioning & Data Isolation */}
+        {/* TAB 1: SIGN IN */}
+        {tab === 'login' && (
+          <form onSubmit={handleLoginSubmit} className="space-y-4">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="email"
+                  required
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className="w-full pl-10 pr-4 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-slate-700">Password</label>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-[11px] text-purple-600 hover:text-purple-700 flex items-center gap-1 font-medium"
+                >
+                  {showPassword ? (
+                    <>
+                      <EyeOff className="w-3 h-3" />
+                      <span>Hide</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3 h-3" />
+                      <span>Show</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  className="w-full pl-10 pr-10 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 rounded-full bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20 transition disabled:opacity-50"
+            >
+              <span>{loading ? 'Signing in...' : 'Sign In to Workspace'}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </form>
+        )}
+
+        {/* TAB 2: REQUEST ACCESS (Awaits Admin Approval) */}
+        {tab === 'register' && (
+          <form onSubmit={handleRegisterSubmit} className="space-y-4">
+            <div className="p-3 rounded-2xl bg-purple-50/70 border border-purple-100 text-[11px] text-purple-950 leading-relaxed">
+              🔒 <strong>Admin-Approval Required:</strong> Once you submit, your account will be placed in the admin review queue. Upon approval, you get <strong>50 credits = 75 minutes</strong> of free daily research time.
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                Full Name
+              </label>
+              <div className="relative">
+                <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  required
+                  value={regName}
+                  onChange={(e) => setRegName(e.target.value)}
+                  placeholder="e.g. Tariq Mehmood"
+                  className="w-full pl-10 pr-4 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="email"
+                  required
+                  value={regEmail}
+                  onChange={(e) => setRegEmail(e.target.value)}
+                  placeholder="you@domain.com"
+                  className="w-full pl-10 pr-4 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                Desired Password (min 6 chars)
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={regPassword}
+                  onChange={(e) => setRegPassword(e.target.value)}
+                  placeholder="Create your password"
+                  className="w-full pl-10 pr-4 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                Intended Use / Note to Admin (Optional)
+              </label>
+              <input
+                type="text"
+                value={regReason}
+                onChange={(e) => setRegReason(e.target.value)}
+                placeholder="e.g. SEO Agency, Micro-Niche Blog, Programmatic Research"
+                className="w-full px-3.5 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 rounded-full bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20 transition disabled:opacity-50"
+            >
+              <span>{loading ? 'Submitting Request...' : 'Submit Request for Approval'}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </form>
+        )}
+
+        {/* Daily Quota Policy Notice */}
         <div className="p-3 rounded-2xl bg-purple-50/60 border border-purple-100/80 text-[11px] text-purple-900 leading-relaxed space-y-1">
           <p className="font-bold flex items-center gap-1.5 text-purple-950">
             <CheckCircle2 className="w-3.5 h-3.5 text-purple-700" />
-            <span>Administrator-Managed Workspace</span>
+            <span>Daily Free Quota: 50 Credits (75 Minutes)</span>
           </p>
           <p className="text-slate-600">
-            Accounts and passwords are provisioned exclusively by the Administrator. Each user has their own private, isolated workspace for all searches, saved niches, and dossiers.
+            Each approved user receives 50 credits per day (equivalent to 75 minutes of active platform usage). Credits decrease as you spend time using the platform and reset daily.
           </p>
         </div>
       </div>
 
-      <div className="text-center">
-        <Link
-          href="/"
-          className="text-xs text-slate-500 hover:text-purple-700 transition font-medium"
-        >
-          ← Back to Homepage
-        </Link>
+      <div className="text-center text-[11px] text-slate-400 font-medium">
+        🔒 Protected Private Intelligence Suite · All access requires authorized login
       </div>
     </div>
   );

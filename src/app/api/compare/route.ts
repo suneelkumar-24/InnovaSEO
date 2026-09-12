@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { NicheViabilityReport } from '@/lib/providers/types';
+import { getUserFromRequest } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getUserFromRequest(req);
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized. Please log in.' }, { status: 401 });
+    }
+
     const { researchIds } = await req.json();
 
     if (!Array.isArray(researchIds) || researchIds.length < 2) {
@@ -12,7 +18,7 @@ export async function POST(req: NextRequest) {
 
     const reports: NicheViabilityReport[] = [];
     for (const id of researchIds) {
-      const item = db.getResearchById(id);
+      const item = db.getResearchById(id, user.id);
       if (item && item.report) {
         reports.push(item.report);
       }

@@ -2,9 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { AutopilotEngine } from '@/lib/engine/autopilot-engine';
 import { db } from '@/lib/db';
 import { AutopilotConfig } from '@/lib/providers/types';
+import { getUserFromRequest } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   try {
+    const user = await getUserFromRequest(req);
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized. Please log in.' }, { status: 401 });
+    }
+
     const status = AutopilotEngine.getStatus();
     return NextResponse.json({
       success: true,
@@ -18,6 +24,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getUserFromRequest(req);
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized. Please log in.' }, { status: 401 });
+    }
+
     const body = await req.json();
     const { action } = body;
 

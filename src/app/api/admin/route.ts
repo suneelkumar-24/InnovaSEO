@@ -13,7 +13,8 @@ export async function GET(req: NextRequest) {
     }
 
     const users = db.getAllUsers();
-    const activeUsers = users.filter((u) => u.status !== 'suspended').length;
+    const activeUsers = users.filter((u) => u.status === 'active' || !u.status).length;
+    const pendingUsers = users.filter((u) => u.status === 'pending_approval').length;
     const suspendedUsers = users.filter((u) => u.status === 'suspended').length;
     const adminUsers = users.filter((u) => u.role === 'admin').length;
     const standardUsers = users.filter((u) => u.role === 'user').length;
@@ -23,6 +24,7 @@ export async function GET(req: NextRequest) {
       stats: {
         totalUsers: users.length,
         activeUsers,
+        pendingApprovals: pendingUsers,
         suspendedUsers,
         adminUsers,
         standardUsers,
@@ -132,6 +134,40 @@ export async function POST(req: NextRequest) {
         message: `Admin updated credits for ${updatedUser.email}: ${credits} remaining (Daily limit: ${updatedUser.dailyCreditsLimit})`,
       });
       return NextResponse.json({ success: true, user: updatedUser });
+    }
+
+    if (action === 'approve_user') {
+      const { userId } = body;
+      if (!userId) {
+        return NextResponse.json({ success: false, error: 'User ID is required.' }, { status: 400 });
+      }
+      const approvedUser = db.approveUser(userId);
+      db.addLog({
+        userId: currentAdmin.id,
+        level: 'info',
+        module: 'Admin',
+        message: `Admin (${currentAdmin.email}) APPROVED registration request for: ${approvedUser.email} (Assigned 50 credits = 75 mins/day)`,
+      });
+      return NextResponse.json({
+        success: true,
+        message: `User ${approvedUser.email} has been approved and activated with 50 credits (75 mins/day).`,
+        user: approvedUser,
+      });
+    }
+
+    if (action === 'reject_user') {
+      const { userId } = body;
+      if (!userId) {
+        return NextResponse.json({ success: false, error: 'User ID is required.' }, { status: 400 });
+      }
+      db.rejectUser(userId);
+      db.addLog({
+        userId: currentAdmin.id,
+        level: 'warn',
+        module: 'Admin',
+        message: `Admin (${currentAdmin.email}) rejected registration request for user ID: ${userId}`,
+      });
+      return NextResponse.json({ success: true, message: 'User registration request rejected.' });
     }
 
     if (action === 'reset_password') {

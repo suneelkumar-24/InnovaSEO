@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AiProvider } from '@/lib/providers/ai-provider';
+import { getUserFromRequest } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getUserFromRequest(req);
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized. Please log in.' }, { status: 401 });
+    }
+
     const { seedKeyword, nicheName, nicheType } = await req.json();
 
     const targetTerm = seedKeyword || nicheName || 'niche';

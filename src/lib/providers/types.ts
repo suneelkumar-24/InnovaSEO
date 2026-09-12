@@ -563,7 +563,10 @@ export interface User {
   credits: number;
   dailyCreditsLimit: number;
   lastCreditResetDate?: string;
-  status?: 'active' | 'suspended';
+  status?: 'active' | 'suspended' | 'pending_approval';
+  secondsUsedToday?: number; // active usage seconds today (max 4500 seconds = 75 minutes)
+  remainingMinutes?: number; // derived remaining minutes
+  requestReason?: string;
 }
 
 export interface SavedNicheItem {

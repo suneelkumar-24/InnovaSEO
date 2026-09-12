@@ -5,8 +5,9 @@ import { AiProvider } from '@/lib/providers/ai-provider';
 
 export async function GET(req: NextRequest) {
   try {
+    const user = await getUserFromRequest(req);
     const settings = db.getSettings();
-    const data = db.getResearches();
+    const data = user ? db.getResearches(user.id) : [];
     const activeKeys = [
       { provider: 'gemini', isActive: Boolean(process.env.GEMINI_API_KEY), status: process.env.GEMINI_API_KEY ? 'valid' : 'unconfigured' },
       { provider: 'groq', isActive: Boolean(process.env.GROQ_API_KEY), status: process.env.GROQ_API_KEY ? 'valid' : 'unconfigured' },

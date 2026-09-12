@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { signJwt, verifyJwt, TOKEN_NAME } from '@/lib/auth';
+import { signJwt, verifyJwt, TOKEN_NAME, getUserFromRequest } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 
 export async function POST(req: NextRequest) {
@@ -15,11 +15,23 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Email and password are required.' }, { status: 400 });
       }
 
-      const user = db.getUserByEmail(email);
+      const user = db.getUserByEmail(email.trim());
       if (!user) {
         return NextResponse.json({ success: false, error: 'Invalid email or password.' }, { status: 401 });
       }
 
+      // Check if awaiting admin approval
+      if (user.status === 'pending_approval') {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Your account is pending administrator approval. Please wait for an admin to approve your request.',
+          },
+          { status: 403 }
+        );
+      }
+
+      // Check if suspended
       if (user.status === 'suspended') {
         return NextResponse.json(
           { success: false, error: 'Your account is suspended. Please contact the administrator.' },
@@ -60,24 +72,69 @@ export async function POST(req: NextRequest) {
         userId: user.id,
         level: 'info',
         module: 'Auth',
-        message: `User logged in: ${user.email}`,
+        message: `User logged in: ${user.email} (Remaining: ${safeUser.remainingMinutes}m, ${safeUser.credits} credits)`,
       });
 
       return response;
     }
 
-    // 2. REGISTER (Disabled for public - Admin provisions accounts)
+    // 2. REGISTER (Account Request -> Awaits Admin Approval)
     if (action === 'register') {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Public registration is disabled. User accounts are provisioned exclusively by the Administrator with assigned passwords.',
-        },
-        { status: 403 }
+      const { email, password, name, reason } = body;
+      if (!email || !password || !name) {
+        return NextResponse.json(
+          { success: false, error: 'Name, email, and password are required.' },
+          { status: 400 }
+        );
+      }
+
+      if (password.length < 6) {
+        return NextResponse.json(
+          { success: false, error: 'Password must be at least 6 characters.' },
+          { status: 400 }
+        );
+      }
+
+      const safeUser = db.createUser(
+        email.trim().toLowerCase(),
+        password,
+        name.trim(),
+        'user',
+        'pending_approval',
+        reason ? reason.trim() : undefined
       );
+
+      db.addLog({
+        userId: safeUser.id,
+        level: 'warn',
+        module: 'Auth',
+        message: `New account request awaiting admin approval: ${safeUser.email} (${safeUser.name})`,
+      });
+
+      return NextResponse.json({
+        success: true,
+        pendingApproval: true,
+        message:
+          'Your account request has been submitted! An administrator must review and approve your account before you can log in.',
+      });
     }
 
-    // 3. LOGOUT
+    // 3. HEARTBEAT (Tracks 75 minutes = 4500 seconds / 50 credits daily usage)
+    if (action === 'heartbeat') {
+      const userFromReq = await getUserFromRequest(req);
+      if (!userFromReq) {
+        return NextResponse.json({ success: false, error: 'Unauthorized.' }, { status: 401 });
+      }
+
+      const activeSeconds = Number(body.activeSeconds) || 30;
+      const result = db.recordTimeSpent(userFromReq.id, activeSeconds);
+
+      return NextResponse.json({
+        ...result,
+      });
+    }
+
+    // 4. LOGOUT
     if (action === 'logout') {
       const response = NextResponse.json({ success: true, message: 'Logged out successfully.' });
       response.cookies.delete(TOKEN_NAME);
@@ -115,6 +172,10 @@ export async function GET(req: NextRequest) {
     const user = db.getUserById(payload.userId);
     if (!user) {
       return NextResponse.json({ success: false, user: null });
+    }
+
+    if (user.status === 'pending_approval' || user.status === 'suspended') {
+      return NextResponse.json({ success: false, user: null, status: user.status });
     }
 
     return NextResponse.json({

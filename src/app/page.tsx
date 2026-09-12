@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/components/AuthProvider';
 import {
   Search,
   Sparkles,
@@ -40,9 +41,20 @@ const FLOATING_BUBBLES = [
 
 export default function HomePage() {
   const router = useRouter();
+  const { user, loading } = useAuth();
   const [seedKeyword, setSeedKeyword] = useState('');
   const [showPricingModal, setShowPricingModal] = useState(false);
   const [activeShowcaseTab, setActiveShowcaseTab] = useState<'direct' | 'marketplace' | 'checklist'>('checklist');
+
+  useEffect(() => {
+    if (!loading) {
+      if (user) {
+        router.replace('/dashboard');
+      } else {
+        router.replace('/login');
+      }
+    }
+  }, [user, loading, router]);
 
   const handleQuickHunt = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +66,14 @@ export default function HomePage() {
     setSeedKeyword(kw);
     router.push(`/research/new?seed=${encodeURIComponent(kw)}`);
   };
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center font-sans text-xs text-slate-500">
+        Redirecting to login portal...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#faf9f6] text-slate-800 font-sans relative overflow-x-hidden selection:bg-purple-500 selection:text-white">

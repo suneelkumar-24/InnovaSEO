@@ -206,14 +206,20 @@ export default function Header({
         <div className="flex items-center gap-2.5">
           {children}
 
-          {/* User Credits Badge */}
+          {/* User Credits & Time Badge */}
           {user && (
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-50 border border-purple-200/90 text-purple-900 font-bold text-xs shadow-xs">
-              <Zap className="w-3.5 h-3.5 text-purple-600 fill-purple-600" />
+            <div className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold shadow-xs ${
+              isAdmin
+                ? 'bg-purple-50 border-purple-200/90 text-purple-900'
+                : (user.credits ?? 50) <= 5
+                ? 'bg-rose-50 border-rose-200 text-rose-800 animate-pulse'
+                : 'bg-purple-50 border-purple-200/90 text-purple-900'
+            }`}>
+              <Zap className={`w-3.5 h-3.5 ${isAdmin ? 'text-purple-600 fill-purple-600' : (user.credits ?? 50) <= 5 ? 'text-rose-600 fill-rose-600' : 'text-purple-600 fill-purple-600'}`} />
               <span>
                 {isAdmin
                   ? 'Admin (Unlimited)'
-                  : `${user.credits ?? 50} / ${user.dailyCreditsLimit ?? 50} Daily Credits`}
+                  : `${user.credits ?? 50} Credits · ${user.remainingMinutes ?? 75}m left`}
               </span>
             </div>
           )}
@@ -257,9 +263,9 @@ export default function Header({
                       <p className="font-bold text-slate-900 truncate">{user.name}</p>
                       <p className="text-slate-500 text-[11px] truncate">{user.email}</p>
                       <div className="pt-1 flex items-center justify-between">
-                        <span className="text-[10px] uppercase font-bold text-slate-400">Daily Credits</span>
+                        <span className="text-[10px] uppercase font-bold text-slate-400">Daily Quota</span>
                         <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
-                          {isAdmin ? 'Unlimited' : `${user.credits ?? 50} / ${user.dailyCreditsLimit ?? 50}`}
+                          {isAdmin ? 'Unlimited' : `${user.credits ?? 50} Cr · ${user.remainingMinutes ?? 75}m left`}
                         </span>
                       </div>
                     </div>

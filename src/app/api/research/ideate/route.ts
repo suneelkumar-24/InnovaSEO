@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AiProvider } from '@/lib/providers/ai-provider';
 import { getCountryGeoConfig, getGoogleSearchUrl } from '@/lib/geo';
+import { getUserFromRequest } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getUserFromRequest(req);
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized. Please log in.' }, { status: 401 });
+    }
+
     const { topic, industry, nicheType = 'micro', businessModel = 'affiliate', mode = 'niche_ideas' } = await req.json();
 
     if (!topic && !industry) {

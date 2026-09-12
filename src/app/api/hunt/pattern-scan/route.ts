@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AiProvider } from '@/lib/providers/ai-provider';
 import { getCountryGeoConfig } from '@/lib/geo';
+import { getUserFromRequest } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getUserFromRequest(req);
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized. Please log in to perform pattern scans.' }, { status: 401 });
+    }
+
     const body = await req.json();
     const {
       seed,

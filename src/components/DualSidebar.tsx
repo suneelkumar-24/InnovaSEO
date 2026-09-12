@@ -396,22 +396,30 @@ export default function DualSidebar() {
           {/* Sub-Sidebar Footer: User Card & Engine Info */}
           <div className="p-3 border-t border-slate-100 bg-slate-50/50 space-y-2">
             {user && (
-              <div className="p-2 rounded-xl bg-white border border-slate-200 text-xs flex items-center justify-between shadow-2xs">
-                <div className="min-w-0 pr-1.5">
-                  <p className="text-[11px] font-bold text-slate-900 truncate">
-                    {user.name}
-                  </p>
-                  <p className="text-[10px] text-slate-500 truncate">{user.email}</p>
+              <div className="p-2 rounded-xl bg-white border border-slate-200 text-xs space-y-1.5 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0 pr-1.5">
+                    <p className="text-[11px] font-bold text-slate-900 truncate">
+                      {user.name}
+                    </p>
+                    <p className="text-[10px] text-slate-500 truncate">{user.email}</p>
+                  </div>
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase shrink-0 ${
+                      isAdmin
+                        ? 'bg-purple-100 text-purple-700'
+                        : 'bg-emerald-100 text-emerald-700'
+                    }`}
+                  >
+                    {isAdmin ? 'Admin' : 'Free Pro'}
+                  </span>
                 </div>
-                <span
-                  className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase shrink-0 ${
-                    isAdmin
-                      ? 'bg-purple-100 text-purple-700'
-                      : 'bg-emerald-100 text-emerald-700'
-                  }`}
-                >
-                  {isAdmin ? 'Admin' : 'Free Pro'}
-                </span>
+                <div className="pt-1 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                  <span className="text-slate-500 font-medium">Daily Quota:</span>
+                  <span className="font-bold text-purple-700 font-mono">
+                    {isAdmin ? 'Unlimited' : `${user.credits ?? 50} Cr · ${user.remainingMinutes ?? 75}m left`}
+                  </span>
+                </div>
               </div>
             )}
             <div className="p-2 rounded-xl bg-purple-50/70 border border-purple-100 text-xs flex items-center justify-between">

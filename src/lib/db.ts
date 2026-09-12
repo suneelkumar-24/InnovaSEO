@@ -717,36 +717,43 @@ export const db = {
     const data = readDb();
     const user = data.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
     if (!user) return null;
-    // Check and reset daily credits (50 credits every 24h)
+    // Check and reset daily credits (50 credits = 75 mins every 24h)
     const today = new Date().toISOString().slice(0, 10);
     if (user.role !== 'admin' && user.lastCreditResetDate !== today) {
       user.lastCreditResetDate = today;
+      user.secondsUsedToday = 0;
       user.credits = user.dailyCreditsLimit ?? 50;
       writeDb(data);
     }
-    return user;
+    const remainingSeconds = user.role === 'admin' ? 999999 : Math.max(0, 4500 - (user.secondsUsedToday || 0));
+    const remainingMinutes = user.role === 'admin' ? 999999 : Math.max(0, Math.ceil(remainingSeconds / 60));
+    return { ...user, remainingMinutes };
   },
   getUserById: (id: string) => {
     const data = readDb();
     const user = data.users.find((u) => u.id === id);
     if (!user) return null;
-    // Check and reset daily credits (50 credits every 24h)
+    // Check and reset daily credits (50 credits = 75 mins every 24h)
     const today = new Date().toISOString().slice(0, 10);
     if (user.role !== 'admin' && user.lastCreditResetDate !== today) {
       user.lastCreditResetDate = today;
+      user.secondsUsedToday = 0;
       user.credits = user.dailyCreditsLimit ?? 50;
       writeDb(data);
     }
+    const remainingSeconds = user.role === 'admin' ? 999999 : Math.max(0, 4500 - (user.secondsUsedToday || 0));
+    const remainingMinutes = user.role === 'admin' ? 999999 : Math.max(0, Math.ceil(remainingSeconds / 60));
     const { passwordHash, ...safeUser } = user;
-    return safeUser;
+    return { ...safeUser, remainingMinutes };
   },
   createUser: (
     email: string,
     password: string,
     name: string,
     role: 'admin' | 'user' = 'user',
-    status: 'active' | 'suspended' = 'active',
-    dailyCreditsLimit: number = 999999
+    status: 'active' | 'suspended' | 'pending_approval' = 'active',
+    dailyCreditsLimit?: number,
+    reason?: string
   ) => {
     const data = readDb();
     if (data.users.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
@@ -755,7 +762,8 @@ export const db = {
     const salt = bcrypt.genSaltSync(10);
     const passwordHash = bcrypt.hashSync(password, salt);
     const today = new Date().toISOString().slice(0, 10);
-    const limit = typeof dailyCreditsLimit === 'number' && dailyCreditsLimit > 0 ? dailyCreditsLimit : 999999;
+    const isAdmin = role === 'admin';
+    const limit = isAdmin ? 999999 : (dailyCreditsLimit ?? 50);
     const newUser = {
       id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       email,
@@ -767,16 +775,46 @@ export const db = {
       apiUsageCount: 0,
       credits: limit,
       dailyCreditsLimit: limit,
+      secondsUsedToday: 0,
       lastCreditResetDate: today,
+      requestReason: reason,
     };
     data.users.push(newUser);
     writeDb(data);
     const { passwordHash: _, ...safeUser } = newUser;
-    return safeUser;
+    return { ...safeUser, remainingMinutes: isAdmin ? 999999 : 75 };
   },
   getAllUsers: () => {
     const data = readDb();
-    return data.users.map(({ passwordHash, ...u }) => u);
+    const today = new Date().toISOString().slice(0, 10);
+    return data.users.map(({ passwordHash, ...u }) => {
+      const remainingSeconds = u.role === 'admin' ? 999999 : Math.max(0, 4500 - (u.secondsUsedToday || 0));
+      const remainingMinutes = u.role === 'admin' ? 999999 : Math.max(0, Math.ceil(remainingSeconds / 60));
+      return { ...u, remainingMinutes };
+    });
+  },
+  approveUser: (userId: string) => {
+    const data = readDb();
+    const user = data.users.find((u) => u.id === userId);
+    if (!user) {
+      throw new Error('User not found.');
+    }
+    user.status = 'active';
+    user.credits = 50;
+    user.dailyCreditsLimit = 50;
+    user.secondsUsedToday = 0;
+    user.lastCreditResetDate = new Date().toISOString().slice(0, 10);
+    writeDb(data);
+    const { passwordHash: _, ...safeUser } = user;
+    return { ...safeUser, remainingMinutes: 75 };
+  },
+  rejectUser: (userId: string) => {
+    const data = readDb();
+    data.users = data.users.filter((u) => u.id !== userId);
+    data.researches = data.researches.filter((r) => r.userId !== userId);
+    data.savedNiches = data.savedNiches.filter((s) => s.userId !== userId);
+    writeDb(data);
+    return true;
   },
   deleteUser: (userId: string) => {
     const data = readDb();
@@ -787,19 +825,103 @@ export const db = {
     writeDb(data);
     return true;
   },
-  deductUserCredit: (
-    userId: string,
-    amount: number = 1
-  ): { success: boolean; remainingCredits: number; error?: string } => {
+  recordTimeSpent: (userId: string, seconds: number = 30) => {
     const data = readDb();
     const user = data.users.find((u) => u.id === userId);
     if (!user) {
-      return { success: false, remainingCredits: 0, error: 'User account not found.' };
+      return { success: false, remainingCredits: 0, remainingMinutes: 0, exhausted: true };
     }
-    // 100% Free SaaS: unlimited usage and zero charges
+    if (user.role === 'admin') {
+      return { success: true, remainingCredits: 999999, remainingMinutes: 999999, exhausted: false };
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    if (user.lastCreditResetDate !== today) {
+      user.lastCreditResetDate = today;
+      user.secondsUsedToday = 0;
+      user.credits = user.dailyCreditsLimit ?? 50;
+    }
+
+    const maxSeconds = 4500; // 75 mins = 4500s
+    const currentUsed = user.secondsUsedToday || 0;
+    const newUsed = Math.min(maxSeconds, currentUsed + seconds);
+    user.secondsUsedToday = newUsed;
+
+    const remainingSeconds = Math.max(0, maxSeconds - newUsed);
+    user.credits = Math.max(0, Math.ceil(remainingSeconds / 90)); // 50 credits = 75 mins (90s per credit)
+    writeDb(data);
+
+    return {
+      success: true,
+      secondsUsedToday: newUsed,
+      remainingSeconds,
+      remainingMinutes: Math.max(0, Math.ceil(remainingSeconds / 60)),
+      credits: user.credits,
+      exhausted: remainingSeconds <= 0,
+    };
+  },
+  checkUserQuota: (userId: string) => {
+    const data = readDb();
+    const user = data.users.find((u) => u.id === userId);
+    if (!user) return { allowed: false, error: 'User not found.' };
+    if (user.role === 'admin') return { allowed: true, credits: 999999, remainingMinutes: 999999 };
+
+    const today = new Date().toISOString().slice(0, 10);
+    if (user.lastCreditResetDate !== today) {
+      user.lastCreditResetDate = today;
+      user.secondsUsedToday = 0;
+      user.credits = user.dailyCreditsLimit ?? 50;
+      writeDb(data);
+    }
+
+    const remainingSeconds = Math.max(0, 4500 - (user.secondsUsedToday || 0));
+    if (remainingSeconds <= 0 || (user.credits ?? 0) <= 0) {
+      return {
+        allowed: false,
+        credits: 0,
+        remainingMinutes: 0,
+        error: 'Daily usage limit reached (75 minutes / 50 credits used). Your 75-minute quota resets automatically at midnight.',
+      };
+    }
+
+    return {
+      allowed: true,
+      credits: user.credits,
+      remainingMinutes: Math.ceil(remainingSeconds / 60),
+    };
+  },
+  deductUserCredit: (
+    userId: string,
+    amount: number = 1
+  ): { success: boolean; remainingCredits: number; remainingMinutes: number; error?: string } => {
+    const data = readDb();
+    const user = data.users.find((u) => u.id === userId);
+    if (!user) {
+      return { success: false, remainingCredits: 0, remainingMinutes: 0, error: 'User account not found.' };
+    }
+    if (user.role === 'admin') {
+      user.apiUsageCount = (user.apiUsageCount || 0) + amount;
+      writeDb(data);
+      return { success: true, remainingCredits: 999999, remainingMinutes: 999999 };
+    }
+
+    const quota = db.checkUserQuota(userId);
+    if (!quota.allowed) {
+      return {
+        success: false,
+        remainingCredits: 0,
+        remainingMinutes: 0,
+        error: quota.error,
+      };
+    }
+
     user.apiUsageCount = (user.apiUsageCount || 0) + amount;
     writeDb(data);
-    return { success: true, remainingCredits: 999999 };
+    const remainingSeconds = Math.max(0, 4500 - (user.secondsUsedToday || 0));
+    return {
+      success: true,
+      remainingCredits: user.credits,
+      remainingMinutes: Math.ceil(remainingSeconds / 60),
+    };
   },
   updateUserCredits: (userId: string, newCredits: number, newDailyLimit?: number) => {
     const data = readDb();
@@ -832,7 +954,7 @@ export const db = {
       name?: string;
       role?: 'admin' | 'user';
       email?: string;
-      status?: 'active' | 'suspended';
+      status?: 'active' | 'suspended' | 'pending_approval';
     }
   ) => {
     const data = readDb();

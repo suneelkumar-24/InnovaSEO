@@ -25,6 +25,7 @@ import {
 
 interface AdminStats {
   totalUsers: number;
+  pendingApprovals: number;
   activeUsers: number;
   suspendedUsers: number;
   adminUsers: number;
@@ -36,6 +37,7 @@ export default function AdminPage() {
 
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
+    pendingApprovals: 0,
     activeUsers: 0,
     suspendedUsers: 0,
     adminUsers: 0,
@@ -44,7 +46,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [userSearchQuery, setUserSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending_approval' | 'active' | 'suspended'>('all');
   const [roleFilter, setRoleFilter] = useState<'all' | 'user' | 'admin'>('all');
 
   // Create User Modal State
@@ -89,7 +91,8 @@ export default function AdminPage() {
       if (data.success) {
         setStats(data.stats || {
           totalUsers: data.users?.length || 0,
-          activeUsers: (data.users || []).filter((u: any) => u.status !== 'suspended').length,
+          pendingApprovals: (data.users || []).filter((u: any) => u.status === 'pending_approval').length,
+          activeUsers: (data.users || []).filter((u: any) => u.status === 'active' || !u.status).length,
           suspendedUsers: (data.users || []).filter((u: any) => u.status === 'suspended').length,
           adminUsers: (data.users || []).filter((u: any) => u.role === 'admin').length,
           standardUsers: (data.users || []).filter((u: any) => u.role === 'user').length,
@@ -219,6 +222,45 @@ export default function AdminPage() {
       }
     } catch (e: any) {
       alert(e?.message || 'Error updating status');
+    }
+  };
+
+  const handleApproveUser = async (userId: string, email: string) => {
+    try {
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'approve_user', userId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActionNotice(`Account ${email} APPROVED! 50 credits (75 active mins/day) allocated.`);
+        fetchAdminData();
+      } else {
+        alert(data.error || 'Failed to approve user account.');
+      }
+    } catch (e: any) {
+      alert(e?.message || 'Error approving user account');
+    }
+  };
+
+  const handleRejectUser = async (userId: string, email: string) => {
+    if (!confirm(`Are you sure you want to decline registration request for ${email}?`)) return;
+    try {
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reject_user', userId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActionNotice(`Registration request for ${email} has been declined and deleted.`);
+        fetchAdminData();
+      } else {
+        alert(data.error || 'Failed to decline user.');
+      }
+    } catch (e: any) {
+      alert(e?.message || 'Error declining user');
     }
   };
 
@@ -358,9 +400,9 @@ Please log in and keep your password secure.`;
       />
 
       <main className="flex-1 p-6 sm:p-8 max-w-6xl mx-auto w-full space-y-6">
-        {/* Top Metric Cards: Pure User Metrics */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
+        {/* Top Metric Cards: User & Approval Metrics */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
+          <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-xs">
             <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Accounts</span>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl font-serif font-bold text-slate-900">{stats.totalUsers}</span>
@@ -368,7 +410,28 @@ Please log in and keep your password secure.`;
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
+          <button
+            onClick={() => setStatusFilter(statusFilter === 'pending_approval' ? 'all' : 'pending_approval')}
+            className={`border rounded-3xl p-4 shadow-xs text-left transition ${
+              stats.pendingApprovals > 0
+                ? 'bg-amber-50/80 border-amber-300 hover:bg-amber-100/80'
+                : 'bg-white border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <span className={`text-[10px] uppercase font-bold block ${stats.pendingApprovals > 0 ? 'text-amber-800 font-black' : 'text-slate-400'}`}>
+              Pending Approvals
+            </span>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className={`text-2xl font-serif font-bold ${stats.pendingApprovals > 0 ? 'text-amber-700' : 'text-slate-900'}`}>
+                {stats.pendingApprovals}
+              </span>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${stats.pendingApprovals > 0 ? 'bg-amber-200/80 text-amber-900 font-bold animate-pulse' : 'bg-slate-100 text-slate-500'}`}>
+                {stats.pendingApprovals > 0 ? 'Review Needed' : '0'}
+              </span>
+            </div>
+          </button>
+
+          <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-xs">
             <span className="text-[10px] uppercase font-bold text-slate-400 block">Active Users</span>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl font-serif font-bold text-emerald-600">{stats.activeUsers}</span>
@@ -376,15 +439,15 @@ Please log in and keep your password secure.`;
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
+          <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-xs">
             <span className="text-[10px] uppercase font-bold text-slate-400 block">Standard Members</span>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl font-serif font-bold text-purple-700">{stats.standardUsers}</span>
-              <span className="text-xs font-semibold text-slate-500">Private Data</span>
+              <span className="text-xs font-semibold text-slate-500">75m Daily</span>
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
+          <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-xs">
             <span className="text-[10px] uppercase font-bold text-slate-400 block">Workspace Admins</span>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl font-serif font-bold text-indigo-700">{stats.adminUsers}</span>
@@ -392,6 +455,31 @@ Please log in and keep your password secure.`;
             </div>
           </div>
         </div>
+
+        {/* Urgent Pending Approvals Banner */}
+        {stats.pendingApprovals > 0 && (
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200/90 text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-amber-200 text-amber-900 flex items-center justify-center shrink-0 font-black text-sm">
+                !
+              </div>
+              <div>
+                <p className="font-bold text-xs text-amber-950">
+                  {stats.pendingApprovals} Registration Request{stats.pendingApprovals > 1 ? 's' : ''} Awaiting Admin Approval
+                </p>
+                <p className="text-[11px] text-amber-800">
+                  New users cannot log in until approved. Approving will automatically grant them 50 credits (75 active mins per day).
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setStatusFilter('pending_approval')}
+              className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs shrink-0 self-start sm:self-auto transition"
+            >
+              Filter Pending Requests
+            </button>
+          </div>
+        )}
 
         {/* Global Action Notice Banner */}
         {actionNotice && (
@@ -415,7 +503,7 @@ Please log in and keep your password secure.`;
                 <span>User Accounts & Authentication Management</span>
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Admin adds users with password. Each user gets their own private, isolated workspace.
+                Admin adds users with password. Each user gets 50 daily credits (75 active mins) and a private, isolated workspace.
               </p>
             </div>
 
@@ -453,6 +541,7 @@ Please log in and keep your password secure.`;
                 className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
                 <option value="all">All Statuses</option>
+                <option value="pending_approval">Pending Approval ({stats.pendingApprovals})</option>
                 <option value="active">Active Only</option>
                 <option value="suspended">Suspended Only</option>
               </select>
@@ -490,7 +579,8 @@ Please log in and keep your password secure.`;
                   <th className="py-3.5 px-5">User Profile</th>
                   <th className="py-3.5 px-4">Role</th>
                   <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4 text-center">Researches Run</th>
+                  <th className="py-3.5 px-4">Daily Quota</th>
+                  <th className="py-3.5 px-4 text-center">Researches</th>
                   <th className="py-3.5 px-4">Created Date</th>
                   <th className="py-3.5 px-5 text-right">Actions</th>
                 </tr>
@@ -498,13 +588,18 @@ Please log in and keep your password secure.`;
               <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredUsers.map((u) => {
                   const isSuspended = u.status === 'suspended';
+                  const isPending = u.status === 'pending_approval';
                   const isSelf = Boolean(currentUser && currentUser.id === u.id);
 
                   return (
-                    <tr key={u.id} className="hover:bg-purple-50/40 transition">
+                    <tr key={u.id} className={`transition ${isPending ? 'bg-amber-50/30 hover:bg-amber-50/60' : 'hover:bg-purple-50/40'}`}>
                       <td className="py-3.5 px-5">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-2xs">
+                          <div className={`w-9 h-9 rounded-full text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-2xs ${
+                            isPending
+                              ? 'bg-gradient-to-tr from-amber-500 to-orange-500'
+                              : 'bg-gradient-to-tr from-purple-600 to-indigo-600'
+                          }`}>
                             {u.name ? u.name.slice(0, 1).toUpperCase() : 'U'}
                           </div>
                           <div>
@@ -517,6 +612,11 @@ Please log in and keep your password secure.`;
                               )}
                             </div>
                             <p className="text-slate-500 text-xs font-mono">{u.email}</p>
+                            {u.requestReason && (
+                              <p className="text-[11px] text-amber-800 bg-amber-100/70 border border-amber-200/80 px-2 py-0.5 rounded-md mt-1 max-w-sm">
+                                <span className="font-bold">Note:</span> {u.requestReason}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -532,61 +632,99 @@ Please log in and keep your password secure.`;
                         </span>
                       </td>
                       <td className="py-3.5 px-4">
-                        <button
-                          onClick={() => !isSelf && handleToggleStatus(u.id, u.status || 'active', u.email)}
-                          disabled={isSelf}
-                          title={isSelf ? 'Cannot change own status' : 'Click to toggle status'}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold transition ${
-                            isSuspended
-                              ? 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
-                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
-                          } ${isSelf ? 'cursor-default' : 'cursor-pointer'}`}
-                        >
-                          <span className={`w-1.5 h-1.5 rounded-full ${isSuspended ? 'bg-rose-500' : 'bg-emerald-500'}`} />
-                          <span>{isSuspended ? 'Suspended' : 'Active'}</span>
-                        </button>
+                        {isPending ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                            <span>Pending Review</span>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => !isSelf && handleToggleStatus(u.id, u.status || 'active', u.email)}
+                            disabled={isSelf}
+                            title={isSelf ? 'Cannot change own status' : 'Click to toggle status'}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold transition ${
+                              isSuspended
+                                ? 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                            } ${isSelf ? 'cursor-default' : 'cursor-pointer'}`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${isSuspended ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                            <span>{isSuspended ? 'Suspended' : 'Active'}</span>
+                          </button>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-xs font-mono text-slate-700">
+                        {u.role === 'admin' ? (
+                          <span className="text-purple-700 font-bold">Unlimited</span>
+                        ) : (
+                          <span>
+                            <strong className="text-purple-700 font-bold">{u.credits ?? 50} Cr</strong>
+                            <span className="text-slate-400 text-[11px] block">{u.remainingMinutes ?? 75}m daily time</span>
+                          </span>
+                        )}
                       </td>
                       <td className="py-3.5 px-4 text-center font-bold text-purple-700">
-                        {u.apiUsageCount || 0} Runs
+                        {u.apiUsageCount || 0}
                       </td>
                       <td className="py-3.5 px-4 text-slate-500 text-xs">
                         {new Date(u.createdAt).toLocaleDateString()}
                       </td>
                       <td className="py-3.5 px-5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* Edit User Account */}
-                          <button
-                            onClick={() => openEditModal(u)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-purple-700 hover:bg-purple-50 transition"
-                            title="Edit User Details"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-
-                          {/* Reset Password Button */}
-                          <button
-                            onClick={() => {
-                              setResetModalUser(u);
-                              setNewResetPassword(generateStrongPassword());
-                              setResetPasswordError(null);
-                            }}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-purple-700 hover:bg-purple-50 transition"
-                            title="Reset / Set New Password"
-                          >
-                            <KeyRound className="w-4 h-4" />
-                          </button>
-
-                          {/* Delete User Button */}
-                          {!isSelf && (
+                        {isPending ? (
+                          <div className="flex items-center justify-end gap-2">
                             <button
-                              onClick={() => handleDeleteUser(u.id, u.email)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
-                              title="Delete User Account"
+                              onClick={() => handleApproveUser(u.id, u.email)}
+                              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-xs transition active:scale-95"
+                              title="Approve User Account (50 Credits / 75m active daily time)"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                              <span>Approve</span>
                             </button>
-                          )}
-                        </div>
+                            <button
+                              onClick={() => handleRejectUser(u.id, u.email)}
+                              className="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs flex items-center gap-1 transition"
+                              title="Decline and Remove Request"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>Decline</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-end gap-1.5">
+                            {/* Edit User Account */}
+                            <button
+                              onClick={() => openEditModal(u)}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-purple-700 hover:bg-purple-50 transition"
+                              title="Edit User Details"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+
+                            {/* Reset Password Button */}
+                            <button
+                              onClick={() => {
+                                setResetModalUser(u);
+                                setNewResetPassword(generateStrongPassword());
+                                setResetPasswordError(null);
+                              }}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-purple-700 hover:bg-purple-50 transition"
+                              title="Reset / Set New Password"
+                            >
+                              <KeyRound className="w-4 h-4" />
+                            </button>
+
+                            {/* Delete User Button */}
+                            {!isSelf && (
+                              <button
+                                onClick={() => handleDeleteUser(u.id, u.email)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                                title="Delete User Account"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );

@@ -68,17 +68,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchCurrentUser();
   }, [fetchCurrentUser]);
 
-  // Client-side guard: Without login, no one can access any page
+  const isPublicPage = pathname === '/' || pathname === '/login';
+
+  // Client-side guard: Protected pages require login, public pages (/ and /login) are accessible
   useEffect(() => {
-    if (!loading && !user && pathname !== '/login') {
-      const redirectParam = pathname === '/' ? '' : `?redirect=${encodeURIComponent(pathname)}`;
+    if (!loading && !user && !isPublicPage) {
+      const redirectParam = `?redirect=${encodeURIComponent(pathname)}`;
       if (typeof window !== 'undefined') {
         window.location.replace(`/login${redirectParam}`);
       } else {
         router.replace(`/login${redirectParam}`);
       }
     }
-  }, [loading, user, pathname, router]);
+  }, [loading, user, pathname, router, isPublicPage]);
 
   // Active Heartbeat Timer: Tracks active platform usage and proportionally updates credits
   useEffect(() => {
@@ -214,9 +216,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     : 0;
   const quotaExhausted = Boolean(user && user.role !== 'admin' && credits <= 0);
 
-  // Protect all non-login routes from rendering to unauthenticated users
-  const isLoginPage = pathname === '/login';
-
   return (
     <AuthContext.Provider
       value={{
@@ -232,7 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         refreshUser: fetchCurrentUser,
       }}
     >
-      {isLoginPage ? (
+      {isPublicPage ? (
         children
       ) : loading ? (
         <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-[#faf9f6]">

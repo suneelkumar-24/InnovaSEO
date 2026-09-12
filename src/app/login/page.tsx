@@ -20,9 +20,15 @@ function AuthForm() {
   const searchParams = useSearchParams();
   const redirectTarget = searchParams.get('redirect') || '/dashboard';
 
-  const { login } = useAuth();
+  const { user, loading: authLoading, login } = useAuth();
   const initialTab = searchParams.get('tab') === 'register' ? 'register' : 'login';
   const [tab, setTab] = useState<'login' | 'register'>(initialTab);
+
+  React.useEffect(() => {
+    if (!authLoading && user) {
+      router.replace(redirectTarget);
+    }
+  }, [user, authLoading, router, redirectTarget]);
 
   // Login form state
   const [email, setEmail] = useState('');

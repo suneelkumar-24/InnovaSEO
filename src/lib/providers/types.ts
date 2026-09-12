@@ -560,6 +560,9 @@ export interface User {
   role: 'admin' | 'user';
   createdAt: string;
   apiUsageCount: number;
+  credits: number;
+  dailyCreditsLimit: number;
+  lastCreditResetDate?: string;
 }
 
 export interface SavedNicheItem {

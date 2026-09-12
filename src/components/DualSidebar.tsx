@@ -39,11 +39,6 @@ export default function DualSidebar() {
   // Recent research dossiers for quick navigation
   const [recentDossiers, setRecentDossiers] = useState<Array<{ id: string; nicheName: string; score: number; country: string }>>([]);
 
-  // Hide completely on landing page or login page
-  if (pathname === '/' || pathname === '/login') {
-    return null;
-  }
-
   // Fetch recent dossiers for quick access in sub-sidebar
   useEffect(() => {
     const fetchRecent = async () => {
@@ -102,6 +97,11 @@ export default function DualSidebar() {
       }))
       .filter((sec) => sec.items.length > 0);
   }, [activeModule, searchQuery]);
+
+  // Hide completely on landing page or login page (called after all hooks to comply with React rules)
+  if (pathname === '/' || pathname === '/login') {
+    return null;
+  }
 
   return (
     <div className="flex z-30 select-none shrink-0 h-screen sticky top-0">

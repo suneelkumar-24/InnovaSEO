@@ -445,6 +445,8 @@ function initializeDatabase(): DatabaseSchema {
         passwordHash: defaultAdminPasswordHash,
         createdAt: new Date().toISOString(),
         apiUsageCount: 42,
+        credits: 9999,
+        dailyCreditsLimit: 9999,
       },
       {
         id: 'usr_demo_02',
@@ -454,6 +456,8 @@ function initializeDatabase(): DatabaseSchema {
         passwordHash: defaultUserPasswordHash,
         createdAt: new Date().toISOString(),
         apiUsageCount: 18,
+        credits: 50,
+        dailyCreditsLimit: 50,
       },
     ],
     researches: [
@@ -743,6 +747,8 @@ export const db = {
       passwordHash,
       createdAt: new Date().toISOString(),
       apiUsageCount: 0,
+      credits: role === 'admin' ? 9999 : 50,
+      dailyCreditsLimit: role === 'admin' ? 9999 : 50,
     };
     data.users.push(newUser);
     writeDb(data);

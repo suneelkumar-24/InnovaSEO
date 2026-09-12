@@ -103,6 +103,53 @@ export default function LoginPage() {
             </div>
           )}
 
+          {/* Prominent Instant Demo Access Section */}
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-50 via-indigo-50/50 to-purple-50 border-2 border-purple-200/80 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-bold text-purple-900 uppercase tracking-wide">
+                  Instant Live Demo Mode
+                </span>
+              </div>
+              <span className="px-2 py-0.5 rounded-full bg-purple-200/70 text-[10px] font-bold text-purple-800">
+                1-Click · No Signup
+              </span>
+            </div>
+
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              Explore the full system instantly with pre-seeded 12-Point Checklists, live SERP vulnerability data, and DR 0-5 anomaly reports.
+            </p>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => handleDemoLogin('admin@nichehunter.io', 'Admin@123456')}
+                className="py-2.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 active:scale-95 text-white text-xs font-bold transition shadow-md shadow-purple-600/20 flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+                <span>Demo Admin</span>
+              </button>
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => handleDemoLogin('user@nichehunter.io', 'User@123456')}
+                className="py-2.5 px-3 rounded-xl bg-white border border-purple-300 hover:bg-purple-50 active:scale-95 text-purple-800 text-xs font-bold transition flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-xs"
+              >
+                <UserIcon className="w-3.5 h-3.5 text-purple-600" />
+                <span>Demo User</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="relative flex items-center justify-center">
+            <div className="border-t border-slate-200 w-full" />
+            <span className="bg-white px-3 text-[11px] font-medium text-slate-400 uppercase tracking-wider whitespace-nowrap">
+              or sign in with credentials
+            </span>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             {isRegister && (
               <div>
@@ -154,46 +201,30 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 rounded-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20 transition active:scale-95 disabled:opacity-50"
+              className="w-full py-3.5 rounded-full bg-slate-900 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10 transition active:scale-95 disabled:opacity-50"
             >
               <span>{loading ? 'Authenticating...' : isRegister ? 'Create Account' : 'Sign In'}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </form>
 
-          {/* Quick Demo Logins Banner */}
-          <div className="pt-3 border-t border-slate-100 space-y-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block text-center">
-              1-Click Demo Accounts
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('admin@nichehunter.io', 'Admin@123456')}
-                className="p-2.5 rounded-xl bg-[#faf9f6] border border-slate-200 hover:border-purple-300 text-xs font-semibold text-purple-700 transition"
-              >
-                Demo Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('user@nichehunter.io', 'User@123456')}
-                className="p-2.5 rounded-xl bg-[#faf9f6] border border-slate-200 hover:border-purple-300 text-xs font-semibold text-indigo-700 transition"
-              >
-                Demo User
-              </button>
-            </div>
-          </div>
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+            <Link
+              href="/"
+              className="text-slate-500 hover:text-purple-700 transition font-medium"
+            >
+              ← Back to Homepage
+            </Link>
 
-          <div className="text-center">
             <button
               type="button"
               onClick={() => {
                 setIsRegister(!isRegister);
                 setError(null);
               }}
-              className="text-xs text-slate-500 hover:text-purple-700 transition font-medium"
+              className="text-slate-500 hover:text-purple-700 transition font-medium"
             >
-              {isRegister ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
+              {isRegister ? 'Already have an account? Sign in' : "Create an account"}
             </button>
           </div>
         </div>

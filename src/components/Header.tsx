@@ -307,15 +307,7 @@ export default function Header({
                 </>
               )}
             </div>
-          ) : (
-            <Link
-              href="/login"
-              className="px-3.5 py-1.5 rounded-full bg-slate-900 hover:bg-purple-700 text-white font-bold text-xs transition shadow-xs flex items-center gap-1.5"
-            >
-              <UserIcon className="w-3.5 h-3.5" />
-              <span>Log In</span>
-            </Link>
-          )}
+          ) : null}
         </div>
       </div>
     </header>

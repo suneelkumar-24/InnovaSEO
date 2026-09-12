@@ -75,9 +75,9 @@ export function middleware(request: NextRequest) {
         },
         { status: 401 }
       );
-      if (token) {
-        response.cookies.delete(TOKEN_NAME);
-      }
+      response.headers.set('Cache-Control', 'no-store, max-age=0');
+      response.cookies.delete(TOKEN_NAME);
+      response.cookies.set(TOKEN_NAME, '', { path: '/', maxAge: 0 });
       return response;
     }
     return NextResponse.next();
@@ -100,9 +100,9 @@ export function middleware(request: NextRequest) {
       loginUrl.searchParams.set('redirect', pathname);
     }
     const response = NextResponse.redirect(loginUrl);
-    if (token) {
-      response.cookies.delete(TOKEN_NAME);
-    }
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    response.cookies.delete(TOKEN_NAME);
+    response.cookies.set(TOKEN_NAME, '', { path: '/', maxAge: 0 });
     return response;
   }
 

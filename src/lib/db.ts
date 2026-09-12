@@ -538,8 +538,16 @@ function initializeDatabase(): DatabaseSchema {
 
 // Cloud Redis client (if Upstash or Vercel KV environment variables are configured)
 function getRedisClient(): Redis | null {
-  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+  const url =
+    process.env.STORAGE_REST_API_URL ||
+    process.env.STORAGE_URL ||
+    process.env.UPSTASH_REDIS_REST_URL ||
+    process.env.KV_REST_API_URL;
+  const token =
+    process.env.STORAGE_REST_API_TOKEN ||
+    process.env.STORAGE_TOKEN ||
+    process.env.UPSTASH_REDIS_REST_TOKEN ||
+    process.env.KV_REST_API_TOKEN;
   if (url && token) {
     try {
       return new Redis({ url, token });
@@ -587,7 +595,14 @@ export async function syncCloudDatabase(): Promise<DatabaseSchema> {
 export function readDb(): DatabaseSchema {
   try {
     // If running in cloud environment and memory cache exists, return memory cache
-    if (memoryDbCache && (process.env.VERCEL || process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL)) {
+    if (
+      memoryDbCache &&
+      (process.env.VERCEL ||
+        process.env.STORAGE_REST_API_URL ||
+        process.env.STORAGE_URL ||
+        process.env.UPSTASH_REDIS_REST_URL ||
+        process.env.KV_REST_API_URL)
+    ) {
       return memoryDbCache;
     }
 

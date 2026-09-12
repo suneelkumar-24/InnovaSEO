@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { db, syncCloudDatabase } from '@/lib/db';
 import { signJwt, verifyJwt, TOKEN_NAME, getUserFromRequest } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 
 export async function POST(req: NextRequest) {
   try {
+    await syncCloudDatabase().catch(() => null);
     const body = await req.json();
     const { action } = body;
 
@@ -152,6 +153,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
+    await syncCloudDatabase().catch(() => null);
     let token = '';
     const authHeader = req.headers.get('authorization');
     if (authHeader && authHeader.startsWith('Bearer ')) {

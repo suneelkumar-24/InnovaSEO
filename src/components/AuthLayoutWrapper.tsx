@@ -16,7 +16,11 @@ export default function AuthLayoutWrapper({ children }: { children: React.ReactN
 
   useEffect(() => {
     if (!loading && !user && !isPublicPage) {
-      router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+      if (typeof window !== 'undefined') {
+        window.location.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+      } else {
+        router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+      }
     }
   }, [loading, user, isPublicPage, pathname, router]);
 

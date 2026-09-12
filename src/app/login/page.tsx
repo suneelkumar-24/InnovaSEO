@@ -26,7 +26,11 @@ function AuthForm() {
 
   React.useEffect(() => {
     if (!authLoading && user) {
-      router.replace(redirectTarget);
+      if (typeof window !== 'undefined') {
+        window.location.href = redirectTarget;
+      } else {
+        router.replace(redirectTarget);
+      }
     }
   }, [user, authLoading, router, redirectTarget]);
 
@@ -66,8 +70,12 @@ function AuthForm() {
         return;
       }
 
-      router.push(redirectTarget);
-      router.refresh();
+      // Hard redirect to target to ensure fresh session cookies are picked up by middleware and server components
+      if (typeof window !== 'undefined') {
+        window.location.href = redirectTarget;
+      } else {
+        router.replace(redirectTarget);
+      }
     } catch (err: any) {
       setError(err?.message || 'Authentication error.');
       setLoading(false);
@@ -229,8 +237,8 @@ function AuthForm() {
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@example.com"
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+                  placeholder=""
+                  className="w-full pl-10 pr-4 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
                 />
               </div>
             </div>
@@ -264,8 +272,8 @@ function AuthForm() {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
-                  className="w-full pl-10 pr-10 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+                  placeholder=""
+                  className="w-full pl-10 pr-10 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
                 />
               </div>
             </div>
@@ -273,10 +281,19 @@ function AuthForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 rounded-full bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20 transition disabled:opacity-50"
+              className="w-full py-3.5 rounded-full bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20 transition disabled:opacity-50 cursor-pointer"
             >
-              <span>{loading ? 'Signing in...' : 'Sign In to Workspace'}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              {loading ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Signing In...</span>
+                </>
+              ) : (
+                <>
+                  <span>Sign In to Workspace</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </>
+              )}
             </button>
           </form>
         )}
@@ -299,8 +316,8 @@ function AuthForm() {
                   required
                   value={regName}
                   onChange={(e) => setRegName(e.target.value)}
-                  placeholder="e.g. Tariq Mehmood"
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+                  placeholder=""
+                  className="w-full pl-10 pr-4 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
                 />
               </div>
             </div>
@@ -316,8 +333,8 @@ function AuthForm() {
                   required
                   value={regEmail}
                   onChange={(e) => setRegEmail(e.target.value)}
-                  placeholder="you@domain.com"
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+                  placeholder=""
+                  className="w-full pl-10 pr-4 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
                 />
               </div>
             </div>
@@ -334,8 +351,8 @@ function AuthForm() {
                   minLength={6}
                   value={regPassword}
                   onChange={(e) => setRegPassword(e.target.value)}
-                  placeholder="Create your password"
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+                  placeholder=""
+                  className="w-full pl-10 pr-4 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
                 />
               </div>
             </div>
@@ -348,18 +365,27 @@ function AuthForm() {
                 type="text"
                 value={regReason}
                 onChange={(e) => setRegReason(e.target.value)}
-                placeholder="e.g. SEO Agency, Micro-Niche Blog, Programmatic Research"
-                className="w-full px-3.5 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+                placeholder=""
+                className="w-full px-3.5 py-2.5 bg-[#faf9f6] border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 rounded-full bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20 transition disabled:opacity-50"
+              className="w-full py-3.5 rounded-full bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20 transition disabled:opacity-50 cursor-pointer"
             >
-              <span>{loading ? 'Submitting Request...' : 'Submit Request for Approval'}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              {loading ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Submitting Request...</span>
+                </>
+              ) : (
+                <>
+                  <span>Submit Request for Approval</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </>
+              )}
             </button>
           </form>
         )}
